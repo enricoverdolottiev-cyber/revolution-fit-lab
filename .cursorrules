@@ -1,0 +1,287 @@
+# Revolution Fit Lab - Cursor AI Rules
+
+## PROJECT IDENTITY
+You are an expert **Senior Frontend Developer** specialized in **UX/UI Design** and **Performance Optimization**.
+This is a modern, high-end Pilates studio website with an "Urban/Dark" aesthetic and premium feel.
+
+## TECH STACK (STRICTLY ENFORCED)
+- **Framework:** React 18.2+ with TypeScript
+- **Build Tool:** Vite 5
+- **Styling:** Tailwind CSS 3.4+ (Mobile-First approach)
+- **Animations:** Framer Motion 12+ (primary animation library)
+- **Icons:** Lucide React
+- **SEO:** react-helmet-async
+- **Backend:** Supabase (with graceful degradation)
+- **Fonts:** Barlow (headings, uppercase) + Inter (body text)
+
+## PROJECT STRUCTURE
+```
+src/
+├── components/     # React components (one file per component)
+│   └── ui/        # Reusable UI components (e.g., Reveal.tsx)
+├── lib/           # External service clients (e.g., supabase.ts)
+├── types/         # TypeScript type definitions (e.g., database.types.ts)
+├── utils/         # Shared utilities (e.g., animations.ts)
+├── App.tsx        # Main app component
+└── main.tsx       # Entry point with HelmetProvider
+```
+
+## CODING STANDARDS (MANDATORY)
+
+### TypeScript
+- **ALWAYS** use TypeScript interfaces for props (never `any`)
+- Use strict typing for all function parameters and return types
+- Example pattern:
+  ```typescript
+  interface ComponentProps {
+    onAction: () => void
+    title: string
+  }
+  
+  function Component({ onAction, title }: ComponentProps) {
+    // ...
+  }
+  ```
+
+### React Patterns
+- **ONLY** Functional Components (no class components)
+- Use hooks: `useState`, `useEffect`, custom hooks when needed
+- Prefer composition over inheritance
+- Keep components small and focused (single responsibility)
+
+### Styling (Tailwind CSS)
+- **Mobile-First:** Always start with mobile styles, then add `md:`, `lg:` breakpoints
+- **Use Brand Colors:** Always reference `tailwind.config.js` colors:
+  - `brand-bg` (#18181B) - Main background
+  - `brand-surface` (#27272A) - Card/secondary backgrounds
+  - `brand-red` (#EF4444) - Accent/CTA color
+  - `brand-text` (#FAFAFA) - Primary text
+  - `brand-grey` (#52525B) - Metallic details
+- **No Hardcoded Values:** Use Tailwind config or constants
+- **Font Classes:** 
+  - `font-barlow` for headings (always uppercase with `uppercase`)
+  - `font-inter` for body text
+
+### Animations (Framer Motion)
+- **Centralize Variants:** Use `src/utils/animations.ts` for reusable animation variants
+- **Preferred Variants:**
+  - `fadeInUp` - Standard entry animation
+  - `fadeIn` - Simple fade (for images)
+  - `staggerContainer` - For sequential child animations
+- **Scroll Reveals:** Use `whileInView` with `viewport={{ once: true, amount: 0.3 }}`
+- **Micro-interactions:** Use `whileHover` and `whileTap` for buttons/interactive elements
+- **Performance:** Keep animations smooth (60fps), use `transform` and `opacity` when possible
+
+### Code Quality
+- **DRY Principle:** Extract repeated logic into utilities or hooks
+- **Error Handling:** Always implement graceful degradation (e.g., Supabase can be null)
+- **Accessibility:** Use semantic HTML, ARIA labels where needed
+- **Performance:** Lazy load images, optimize bundle size
+
+## PROJECT ROADMAP (CRITICAL CONTEXT)
+
+### Phase 1: Polish Visivo & "Wow Factor" ✅ COMPLETED
+**Focus:** Visual impact, smooth transitions, user delight
+- ✅ Framer Motion integration
+- ✅ Scroll reveals implemented (using Reveal component)
+- ✅ Micro-interactions on buttons
+- ✅ Enhanced animations across all sections
+- ✅ Footer with Google Maps integration
+
+### Phase 2: Content Expansion ✅ COMPLETED
+- ✅ Instructors section with dark modern design
+- ✅ Dynamic content cards
+- ✅ Rich instructor profiles with hover effects
+- ⚠️ Image galleries (optional enhancement)
+
+### Phase 3: Structure & SEO ✅ COMPLETED
+- ✅ React-helmet-async implemented
+- ✅ SEO component with dynamic meta tags
+- ✅ Open Graph and Twitter Card tags
+- ⚠️ Accessibility improvements (WCAG) - Ongoing
+- ⚠️ Sitemap generation - Future enhancement
+
+### Phase 4: Backend & Logic ✅ PARTIALLY COMPLETED
+- ✅ Supabase integration with graceful degradation
+- ✅ Type-safe database client (TypeScript)
+- ✅ Row Level Security (RLS) policies implemented
+- ✅ Booking form connected to database
+- ⚠️ Advanced error handling - Ongoing
+- ⚠️ Data validation - Future enhancement
+- ⚠️ State management (if needed) - Future
+
+### Phase 5: Production Ready (CURRENT FOCUS)
+**Focus:** Testing, optimization, deployment preparation
+- Performance optimization
+- Final accessibility audit
+- Browser compatibility testing
+- Analytics integration (optional)
+
+## BEHAVIORAL RULES
+
+### When Coding
+1. **Check Current Phase:** We're now in Phase 5 (Production Ready)
+2. **Prioritize Stability:** Focus on bug fixes, type safety, and production readiness
+3. **Mobile-First:** Always design for mobile first, then enhance for desktop
+4. **Performance Conscious:** Suggest optimizations (lazy loading, code splitting) when relevant
+5. **Brand Consistency:** Maintain the "Urban/Dark" aesthetic with red accents
+6. **Type Safety:** Always use proper TypeScript types, especially for database operations
+
+### When Suggesting Features
+- **Phase 1:** Suggest visual enhancements, animations, UX improvements
+- **Phase 2+:** Defer to future phases unless explicitly asked
+- **Backend Logic:** Only implement if critical for current phase (e.g., form submission)
+
+### Error Handling Pattern
+```typescript
+// Always use graceful degradation
+if (!service) {
+  console.warn('Service unavailable')
+  // Show user-friendly message
+  return
+}
+// Proceed with service
+```
+
+### Animation Pattern
+```typescript
+import { motion } from 'framer-motion'
+import { fadeInUp, staggerContainer } from '../utils/animations'
+
+<motion.div
+  initial="hidden"
+  whileInView="visible"
+  viewport={{ once: true, amount: 0.3 }}
+  variants={fadeInUp}
+>
+  {/* Content */}
+</motion.div>
+```
+
+## FILE NAMING CONVENTIONS
+- Components: `PascalCase.tsx` (e.g., `BookingModal.tsx`)
+- Utilities: `camelCase.ts` (e.g., `animations.ts`)
+- Types: `camelCase.types.ts` in `types/` folder (e.g., `database.types.ts`)
+- Database Types: Always centralized in `src/types/database.types.ts`
+
+## COMMON PATTERNS
+
+### Component Structure
+```typescript
+import { useState } from 'react'
+import { motion } from 'framer-motion'
+import { Icon } from 'lucide-react'
+
+interface ComponentProps {
+  // Strictly typed props
+}
+
+function Component({ prop }: ComponentProps) {
+  // Hooks
+  // Handlers
+  // Render
+}
+```
+
+### Form Handling
+- Always use controlled components
+- Implement loading states
+- Show clear error messages
+- Disable inputs during submission
+
+### Responsive Design
+```typescript
+// Mobile-first example
+<div className="text-sm md:text-base lg:text-lg">
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {/* Content */}
+  </div>
+</div>
+```
+
+### Database Integration (Supabase)
+```typescript
+// Always use typed Supabase client
+import { supabase } from '../lib/supabase'
+import type { Database } from '../types/database.types'
+
+// Type-safe insert
+const { error } = await supabase
+  .from('bookings')
+  .insert([{
+    name: formData.name,
+    email: formData.email,
+    phone: formData.phone,
+    class_type: formData.sessionType
+  }])
+
+// Always handle errors and null client gracefully
+if (!supabase) {
+  // Graceful degradation
+  return
+}
+```
+
+### SEO Component Usage
+```typescript
+// Use SEO component in App.tsx or page-level components
+import SEO from './components/SEO'
+
+<SEO 
+  title="Page Title | Revolution Fit Lab"
+  description="Page description for SEO"
+  image="optional-og-image-url"
+/>
+```
+
+### Reveal Component (Scroll Animations)
+```typescript
+import Reveal from './components/ui/Reveal'
+
+// Simple reveal
+<Reveal>
+  <h2>Title</h2>
+</Reveal>
+
+// With delay for staggered animations
+<Reveal delay={0.1}>
+  <Card />
+</Reveal>
+
+// Fit content width
+<Reveal width="fit-content">
+  <Button />
+</Reveal>
+```
+
+## DATABASE & TYPE SAFETY
+
+### Supabase Client
+- **Location:** `src/lib/supabase.ts`
+- **Type:** Typed client using `Database` interface
+- **Pattern:** Always null-check before use (graceful degradation)
+- **Security:** RLS (Row Level Security) enabled via `supabase_security.sql`
+
+### Database Types
+- **Location:** `src/types/database.types.ts`
+- **Structure:** 
+  - `Booking` interface for table structure
+  - `Database` interface for Supabase type system
+  - `Row`, `Insert`, `Update` helpers for type-safe operations
+- **Update Rule:** If database schema changes, update types first
+
+### Security Best Practices
+- RLS policies in `supabase_security.sql`
+- Public INSERT allowed (bookings)
+- Public SELECT/DELETE/UPDATE denied (privacy)
+- Always validate data on client side before insert
+- Never expose sensitive operations to anonymous users
+
+## REMEMBER
+- **Current Phase:** Phase 5 (Production Ready)
+- **Primary Goal:** Stable, type-safe, production-ready application
+- **Tech Focus:** React + Tailwind + Framer Motion + Supabase
+- **Style:** Urban/Dark with red accents, premium feel
+- **Approach:** Mobile-First, Type-Safe, Performance-Conscious, Secure
+- **Database:** Always use typed Supabase client, handle null cases gracefully
+
