@@ -1,18 +1,13 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import {
   Calendar,
   Clock,
   TrendingUp,
   Activity,
-  Target,
-  Award,
   Sparkles,
   ArrowRight,
-  Loader2,
   AlertCircle,
-  Zap,
   Flame,
   Trophy
 } from 'lucide-react'
@@ -51,8 +46,7 @@ const motivationalQuotes = [
 ]
 
 function CustomerDashboard() {
-  const navigate = useNavigate()
-  const { user, profile, isLoading: authLoading } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const [nextSession, setNextSession] = useState<NextSession | null>(null)
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([])
   const [stats, setStats] = useState<UserStats>({
