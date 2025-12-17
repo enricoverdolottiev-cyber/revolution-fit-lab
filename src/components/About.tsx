@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion'
 import { Music, Zap, Users, Award } from 'lucide-react'
 import Reveal from './ui/Reveal'
 
@@ -20,19 +21,29 @@ function About() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
           {/* Parte Visual (Sinistra) */}
           <Reveal>
-            <div className="relative">
+            <motion.div 
+              className="relative group"
+              whileHover={{ scale: 1.02 }}
+              transition={{ duration: 0.3 }}
+            >
               {/* Bordo decorativo rosso offset */}
-              <div className="absolute -bottom-4 -right-4 w-full h-full border-2 border-brand-red pointer-events-none"></div>
+              <motion.div 
+                className="absolute -bottom-4 -right-4 w-full h-full border-2 border-brand-red pointer-events-none"
+                whileHover={{ x: -4, y: -4 }}
+                transition={{ duration: 0.3 }}
+              />
               
               {/* Immagine */}
-              <div className="relative">
-                <img
+              <div className="relative overflow-hidden">
+                <motion.img
                   src="https://images.unsplash.com/photo-1599901860904-17e6ed7083a0?q=80&w=2070"
                   alt="Instructor at Revolution Fit Lab"
                   className="w-full aspect-[4/5] object-cover"
+                  whileHover={{ scale: 1.05 }}
+                  transition={{ duration: 0.5 }}
                 />
               </div>
-            </div>
+            </motion.div>
           </Reveal>
 
           {/* Parte Testo (Destra) */}
@@ -60,14 +71,26 @@ function About() {
               {features.map((feature, index) => {
                 const IconComponent = feature.icon
                 return (
-                  <div key={index} className="flex items-center gap-3">
-                    <div className="w-10 h-10 flex items-center justify-center bg-zinc-800 border border-zinc-700">
+                  <motion.div
+                    key={index}
+                    className="flex items-center gap-3 group"
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1, duration: 0.3 }}
+                    whileHover={{ x: 4 }}
+                  >
+                    <motion.div
+                      className="w-10 h-10 flex items-center justify-center bg-zinc-800 border border-zinc-700 group-hover:border-brand-red transition-colors"
+                      whileHover={{ scale: 1.1, rotate: 5 }}
+                      transition={{ type: 'spring', stiffness: 300 }}
+                    >
                       <IconComponent className="w-5 h-5 text-brand-red" />
-                    </div>
-                    <span className="font-inter text-sm font-medium text-zinc-300">
+                    </motion.div>
+                    <span className="font-inter text-sm font-medium text-zinc-300 group-hover:text-brand-text transition-colors">
                       {feature.label}
                     </span>
-                  </div>
+                  </motion.div>
                 )
               })}
             </div>

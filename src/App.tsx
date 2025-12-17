@@ -5,7 +5,7 @@ import BookingModal from './components/BookingModal'
 import Home from './pages/Home'
 import Auth from './pages/Auth'
 import AdminDashboard from './pages/AdminDashboard'
-import Dashboard from './pages/Dashboard'
+import CustomerDashboard from './pages/CustomerDashboard'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
@@ -41,7 +41,7 @@ function App() {
           path="/dashboard"
           element={
             <ProtectedRoute requiredRole="customer">
-              <Dashboard />
+              <CustomerDashboard />
             </ProtectedRoute>
           }
         />

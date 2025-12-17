@@ -77,20 +77,27 @@ function Pricing({ onOpenBooking }: PricingProps) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {plans.map((plan, index) => (
             <Reveal key={plan.id} delay={index * 0.1}>
-              <div
-                className={`relative flex flex-col p-8 transition-transform duration-300 hover:-translate-y-2 ${
+              <motion.div
+                className={`relative flex flex-col p-8 ${
                   plan.popular
                     ? 'bg-zinc-800 border-2 border-brand-red'
                     : 'bg-zinc-900/50 border-2 border-zinc-800'
                 }`}
+                whileHover={{ y: -8, scale: 1.02 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
               >
               {/* Popular Badge */}
               {plan.popular && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                <motion.div
+                  className="absolute -top-4 left-1/2 -translate-x-1/2"
+                  initial={{ scale: 0, rotate: -10 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ delay: index * 0.1 + 0.3, type: 'spring', stiffness: 200 }}
+                >
                   <span className="bg-brand-red text-brand-text px-4 py-1 font-barlow font-bold text-sm uppercase tracking-wide">
                     MOST POPULAR
                   </span>
-                </div>
+                </motion.div>
               )}
 
               {/* Title */}
@@ -110,16 +117,28 @@ function Pricing({ onOpenBooking }: PricingProps) {
 
               {/* Features List */}
               <ul className="flex-1 space-y-4 mb-8">
-                {plan.features.map((feature, index) => (
-                  <li key={index} className="flex items-start gap-3">
-                    <Check 
-                      className="w-5 h-5 text-brand-red flex-shrink-0 mt-0.5" 
-                      strokeWidth={3}
-                    />
+                {plan.features.map((feature, featureIndex) => (
+                  <motion.li
+                    key={featureIndex}
+                    className="flex items-start gap-3"
+                    initial={{ opacity: 0, x: -10 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1 + featureIndex * 0.05 }}
+                  >
+                    <motion.div
+                      whileHover={{ scale: 1.2, rotate: 10 }}
+                      transition={{ type: 'spring', stiffness: 300 }}
+                    >
+                      <Check 
+                        className="w-5 h-5 text-brand-red flex-shrink-0 mt-0.5" 
+                        strokeWidth={3}
+                      />
+                    </motion.div>
                     <span className="font-inter text-sm text-zinc-300">
                       {feature}
                     </span>
-                  </li>
+                  </motion.li>
                 ))}
               </ul>
 
@@ -136,7 +155,7 @@ function Pricing({ onOpenBooking }: PricingProps) {
               >
                 ACQUISTA
               </motion.button>
-            </div>
+              </motion.div>
             </Reveal>
           ))}
         </div>

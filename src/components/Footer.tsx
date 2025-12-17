@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion'
 import { MapPin, Phone, Mail, Instagram } from 'lucide-react'
 import Reveal from './ui/Reveal'
 
@@ -116,24 +117,28 @@ function Footer() {
                   Seguici
                 </h4>
                 <div className="flex items-center gap-4">
-                  <a
+                  <motion.a
                     href="https://instagram.com/revolutionfitlab"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-zinc-400 hover:text-brand-red transition-colors"
                     aria-label="Instagram"
+                    whileHover={{ scale: 1.2, rotate: 10 }}
+                    whileTap={{ scale: 0.9 }}
                   >
                     <Instagram size={20} />
-                  </a>
-                  <a
+                  </motion.a>
+                  <motion.a
                     href="https://tiktok.com/@revolutionfitlab"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-zinc-400 hover:text-brand-red transition-colors font-inter text-sm"
                     aria-label="TikTok"
+                    whileHover={{ scale: 1.1, y: -2 }}
+                    whileTap={{ scale: 0.95 }}
                   >
                     TikTok
-                  </a>
+                  </motion.a>
                 </div>
               </div>
 

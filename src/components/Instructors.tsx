@@ -88,11 +88,24 @@ function Instructors() {
                 <motion.img
                   src={instructor.image}
                   alt={instructor.name}
-                  className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
-                  whileHover={{ scale: 1.05 }}
+                  className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700"
+                  whileHover={{ scale: 1.08 }}
+                  transition={{ duration: 0.5, ease: 'easeOut' }}
                 />
                 {/* Overlay gradient for bio visibility */}
-                <div className="absolute inset-0 bg-gradient-to-t from-zinc-900/90 via-zinc-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <motion.div 
+                  className="absolute inset-0 bg-gradient-to-t from-zinc-900/90 via-zinc-900/20 to-transparent"
+                  initial={{ opacity: 0 }}
+                  whileHover={{ opacity: 1 }}
+                  transition={{ duration: 0.5 }}
+                />
+                {/* Shine effect on hover */}
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12"
+                  initial={{ x: '-100%' }}
+                  whileHover={{ x: '200%' }}
+                  transition={{ duration: 0.8, ease: 'easeInOut' }}
+                />
               </div>
 
               {/* Content */}
@@ -121,30 +134,39 @@ function Instructors() {
                 </div>
 
                 {/* Social Links */}
-                <div className="flex items-center gap-3 mt-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <motion.div 
+                  className="flex items-center gap-3 mt-4"
+                  initial={{ opacity: 0, y: 10 }}
+                  whileHover={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
                   {instructor.instagram && (
-                    <a
+                    <motion.a
                       href={`https://instagram.com/${instructor.instagram.replace('@', '')}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-zinc-400 hover:text-brand-red transition-colors"
                       aria-label={`Instagram di ${instructor.name}`}
+                      whileHover={{ scale: 1.2, rotate: 5 }}
+                      whileTap={{ scale: 0.9 }}
                     >
                       <Instagram size={18} />
-                    </a>
+                    </motion.a>
                   )}
                   {instructor.linkedin && (
-                    <a
+                    <motion.a
                       href={`https://linkedin.com/in/${instructor.linkedin}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-zinc-400 hover:text-brand-red transition-colors"
                       aria-label={`LinkedIn di ${instructor.name}`}
+                      whileHover={{ scale: 1.2, rotate: -5 }}
+                      whileTap={{ scale: 0.9 }}
                     >
                       <Linkedin size={18} />
-                    </a>
+                    </motion.a>
                   )}
-                </div>
+                </motion.div>
               </div>
             </motion.div>
           ))}

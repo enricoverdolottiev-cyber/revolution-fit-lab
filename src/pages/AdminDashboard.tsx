@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { LogOut, Trash2, Users, Calendar, Loader2, AlertCircle, CheckCircle } from 'lucide-react'
+import { LogOut, Trash2, Users, Calendar, Loader2, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import type { Booking } from '../types/database.types'
 import { fadeInUp, staggerContainer } from '../utils/animations'
@@ -100,6 +100,26 @@ function AdminDashboard() {
     setDeleteId(null)
   }
 
+  // Calculate statistics with useMemo for performance
+  const statistics = useMemo(() => {
+    const now = new Date()
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const weekAgo = new Date(now)
+    weekAgo.setDate(weekAgo.getDate() - 7)
+
+    const total = bookings.length
+    const today = bookings.filter(b => {
+      const bookingDate = new Date(b.created_at)
+      return bookingDate >= todayStart
+    }).length
+    const thisWeek = bookings.filter(b => {
+      const bookingDate = new Date(b.created_at)
+      return bookingDate >= weekAgo
+    }).length
+
+    return { total, today, thisWeek }
+  }, [bookings])
+
   // Format date to Italian format
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -174,7 +194,7 @@ function AdminDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-zinc-400 font-inter text-sm uppercase">Totale Prenotazioni</p>
-                <p className="text-3xl font-barlow font-black mt-2">{bookings.length}</p>
+                <p className="text-3xl font-barlow font-black mt-2">{statistics.total}</p>
               </div>
               <Users className="w-10 h-10 text-brand-red" />
             </div>
@@ -187,12 +207,7 @@ function AdminDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-zinc-400 font-inter text-sm uppercase">Oggi</p>
-                <p className="text-3xl font-barlow font-black mt-2">
-                  {bookings.filter(b => {
-                    const today = new Date().toDateString()
-                    return new Date(b.created_at).toDateString() === today
-                  }).length}
-                </p>
+                <p className="text-3xl font-barlow font-black mt-2">{statistics.today}</p>
               </div>
               <Calendar className="w-10 h-10 text-brand-red" />
             </div>
@@ -205,13 +220,7 @@ function AdminDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-zinc-400 font-inter text-sm uppercase">Questa Settimana</p>
-                <p className="text-3xl font-barlow font-black mt-2">
-                  {bookings.filter(b => {
-                    const weekAgo = new Date()
-                    weekAgo.setDate(weekAgo.getDate() - 7)
-                    return new Date(b.created_at) >= weekAgo
-                  }).length}
-                </p>
+                <p className="text-3xl font-barlow font-black mt-2">{statistics.thisWeek}</p>
               </div>
               <Calendar className="w-10 h-10 text-brand-red" />
             </div>
@@ -225,8 +234,17 @@ function AdminDashboard() {
           variants={fadeInUp}
           className="bg-brand-surface border border-zinc-800 rounded-lg overflow-hidden"
         >
-          <div className="p-6 border-b border-zinc-800">
+          <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
             <h2 className="font-barlow text-xl font-black uppercase">Prenotazioni</h2>
+            <button
+              onClick={fetchBookings}
+              disabled={isLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg transition-colors font-inter text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Aggiorna dati"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <span>Aggiorna</span>
+            </button>
           </div>
 
           {isLoading ? (
