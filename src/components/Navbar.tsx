@@ -1,6 +1,9 @@
-import { useState } from 'react'
-import { Menu, X } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { useState, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Menu, X, LogOut, ChevronDown } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useAuth } from '../hooks/useAuth'
+import { supabase } from '../lib/supabase'
 
 interface NavLink {
   name: string
@@ -8,7 +11,7 @@ interface NavLink {
 }
 
 interface NavbarProps {
-  onOpenBooking: () => void
+  // Nessuna prop necessaria - la Navbar è completamente autonoma
 }
 
 const navLinks: NavLink[] = [
@@ -18,17 +21,145 @@ const navLinks: NavLink[] = [
   { name: 'Pricing', href: '#pricing' },
 ]
 
-function Navbar({ onOpenBooking }: NavbarProps) {
+function Navbar({}: NavbarProps) {
+  const navigate = useNavigate()
+  const { user, role, isLoading, isAdmin } = useAuth()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+
+  // Log pulito per debug: mostra ruolo solo quando non è in loading
+  useEffect(() => {
+    if (!isLoading) {
+      console.log('Sistema Sbloccato - Ruolo attuale:', role)
+    }
+  }, [role, isLoading])
 
   const handleLinkClick = () => {
     setIsMenuOpen(false)
   }
 
+  const handleLogout = async () => {
+    if (!supabase) {
+      console.error('❌ Supabase non disponibile per il logout')
+      return
+    }
+
+    // Feedback visivo: mostra stato di logout
+    setIsLoggingOut(true)
+    console.log('🚪 Avvio logout...')
+
+    try {
+      // Chiama signOut e aspetta il completamento
+      const { error } = await supabase.auth.signOut()
+      
+      if (error) {
+        console.error('❌ Errore durante logout:', error)
+        setIsLoggingOut(false)
+        return
+      }
+
+      console.log('✅ Logout completato con successo')
+      
+      // Chiudi dropdown
+      setIsDropdownOpen(false)
+      
+      // Naviga alla home - React Router gestirà il routing
+      // useAuth.onAuthStateChange aggiornerà automaticamente lo stato
+      navigate('/', { replace: true })
+      
+    } catch (err) {
+      console.error('❌ Errore critico durante logout:', err)
+      setIsLoggingOut(false)
+    }
+  }
+
+  const getAuthButton = () => {
+    // Se isLoading è true, mostra versione semplificata senza pulsanti
+    if (isLoading) {
+      return null // Navbar semplificata durante il caricamento
+    }
+
+    // CRITICO: Se !user && !isLoading, mostra sempre "ACCEDI"
+    if (!user) {
+      return (
+        <motion.div
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <Link 
+            to="/login"
+            className="bg-brand-red hover:bg-red-600 text-white px-6 py-2.5 font-barlow font-bold uppercase tracking-wide transition-colors text-sm inline-block rounded"
+          >
+            ACCEDI
+          </Link>
+        </motion.div>
+      )
+    }
+
+    // Utente loggato: mostra pulsante dinamico con dropdown
+    // Usa optional chaining e fallback per evitare errori se role è null
+    // Assicurati che role sia sempre definito prima di usarlo
+    const buttonText = role === 'admin' 
+      ? 'PANNELLO ADMIN' 
+      : role === 'customer' 
+        ? 'AREA PERSONALE' 
+        : 'ACCOUNT'
+    const buttonPath = role === 'admin' 
+      ? '/admin' 
+      : role === 'customer' 
+        ? '/dashboard' 
+        : '/'
+
+    return (
+      <div className="relative">
+        <motion.button
+          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+          className="bg-zinc-800 hover:bg-zinc-700 text-brand-text px-6 py-2.5 font-barlow font-bold uppercase tracking-wide transition-colors text-sm border border-zinc-700 flex items-center gap-2"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <span>{buttonText}</span>
+          <ChevronDown className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+        </motion.button>
+
+        {/* Dropdown Menu */}
+        <AnimatePresence>
+          {isDropdownOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="absolute right-0 mt-2 w-48 bg-brand-surface border border-zinc-800 rounded-lg shadow-lg overflow-hidden z-50"
+            >
+              <button
+                onClick={() => {
+                  navigate(buttonPath)
+                  setIsDropdownOpen(false)
+                }}
+                className="w-full text-left px-4 py-3 text-brand-text font-inter text-sm hover:bg-zinc-800 transition-colors"
+              >
+                {buttonText}
+              </button>
+              <button
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="w-full text-left px-4 py-3 text-red-400 font-inter text-sm hover:bg-zinc-800 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <LogOut className={`w-4 h-4 ${isLoggingOut ? 'animate-spin' : ''}`} />
+                {isLoggingOut ? 'Disconnessione...' : 'Logout'}
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    )
+  }
+
   return (
     <>
       <motion.nav 
-        className="fixed top-0 left-0 right-0 z-50 bg-transparent backdrop-blur-md"
+        className="fixed top-0 left-0 right-0 z-50 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-900"
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
@@ -51,28 +182,30 @@ function Navbar({ onOpenBooking }: NavbarProps) {
                   {link.name}
                 </a>
               ))}
+              {/* Link Dashboard Admin solo per Admin */}
+              {isAdmin && !isLoading && (
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Link
+                    to="/admin"
+                    className="font-barlow text-base font-bold text-yellow-400 uppercase tracking-wide hover:text-yellow-300 transition-colors border-b-2 border-yellow-400 pb-1 px-2"
+                  >
+                    DASHBOARD ADMIN
+                  </Link>
+                </motion.div>
+              )}
             </div>
 
-            {/* Desktop CTA Button */}
-            <motion.button 
-              onClick={onOpenBooking}
-              className="hidden md:block bg-brand-red text-brand-text px-8 py-3 font-barlow font-bold uppercase tracking-wide hover:bg-red-600 transition-colors"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Prenota
-            </motion.button>
+            {/* Desktop Auth Button */}
+            <div className="hidden md:flex items-center justify-end">
+              {getAuthButton()}
+            </div>
 
-            {/* Mobile Menu Button & CTA */}
-            <div className="flex md:hidden items-center gap-4">
-              <motion.button 
-                onClick={onOpenBooking}
-                className="bg-brand-red text-brand-text px-6 py-2.5 font-barlow font-bold uppercase tracking-wide hover:bg-red-600 transition-colors text-sm"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                Prenota
-              </motion.button>
+            {/* Mobile Menu Button & Auth */}
+            <div className="flex md:hidden items-center gap-2">
+              {getAuthButton()}
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className="text-brand-text p-2"
@@ -91,7 +224,7 @@ function Navbar({ onOpenBooking }: NavbarProps) {
 
       {/* Mobile Menu Overlay - Full Screen */}
       {isMenuOpen && (
-        <div className="fixed inset-0 z-40 bg-zinc-950 md:hidden">
+        <div className="fixed inset-0 z-40 bg-zinc-950 md:hidden" onClick={() => setIsMenuOpen(false)}>
           <div className="flex flex-col items-center justify-center h-full gap-12">
             {navLinks.map((link) => (
               <a
@@ -103,8 +236,26 @@ function Navbar({ onOpenBooking }: NavbarProps) {
                 {link.name}
               </a>
             ))}
+            {/* Link Dashboard Admin solo per Admin (Mobile) */}
+            {isAdmin && !isLoading && (
+              <Link
+                to="/admin"
+                onClick={handleLinkClick}
+                className="font-barlow text-4xl md:text-5xl font-bold text-yellow-400 uppercase tracking-wide hover:text-yellow-300 transition-colors"
+              >
+                DASHBOARD ADMIN
+              </Link>
+            )}
           </div>
         </div>
+      )}
+
+      {/* Click outside to close dropdown */}
+      {isDropdownOpen && (
+        <div
+          className="fixed inset-0 z-30"
+          onClick={() => setIsDropdownOpen(false)}
+        />
       )}
     </>
   )

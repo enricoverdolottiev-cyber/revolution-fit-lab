@@ -14,6 +14,14 @@ export interface Booking {
   class_name: string
 }
 
+export interface Profile {
+  id: string
+  user_id: string
+  role: 'admin' | 'customer'
+  created_at: string
+  updated_at?: string
+}
+
 /**
  * Tipo helper per il database Supabase.
  * Estende i tipi generici di Supabase con le nostre tabelle.
@@ -26,6 +34,11 @@ export type Database = {
         Row: Booking
         Insert: Omit<Booking, 'id'> & { created_at?: string }
         Update: Partial<Omit<Booking, 'id' | 'created_at'>>
+      }
+      profiles: {
+        Row: Profile
+        Insert: Omit<Profile, 'id' | 'created_at' | 'updated_at'> & { created_at?: string; updated_at?: string }
+        Update: Partial<Omit<Profile, 'id' | 'user_id' | 'created_at'>>
       }
     }
     Views: {

@@ -21,22 +21,37 @@ FOR INSERT
 TO anon, authenticated
 WITH CHECK (true);
 
--- STEP 3: Policy per SELECT (negata al pubblico)
+-- STEP 3: Policy per SELECT (negata al pubblico, permessa agli autenticati)
 -- Nessun utente anonimo può vedere le prenotazioni
--- Solo gli admin (service_role) possono vedere i dati
+-- Gli utenti autenticati (admin) possono vedere tutte le prenotazioni
 CREATE POLICY "Deny public select on bookings"
 ON bookings
 FOR SELECT
 TO anon
 USING (false);
 
--- STEP 4: Policy per DELETE (negata al pubblico)
+-- Policy per SELECT agli utenti autenticati (Admin Dashboard)
+CREATE POLICY "Allow authenticated select on bookings"
+ON bookings
+FOR SELECT
+TO authenticated
+USING (true);
+
+-- STEP 4: Policy per DELETE (negata al pubblico, permessa agli autenticati)
 -- Nessun utente anonimo può eliminare prenotazioni
+-- Gli utenti autenticati (admin) possono eliminare prenotazioni
 CREATE POLICY "Deny public delete on bookings"
 ON bookings
 FOR DELETE
 TO anon
 USING (false);
+
+-- Policy per DELETE agli utenti autenticati (Admin Dashboard)
+CREATE POLICY "Allow authenticated delete on bookings"
+ON bookings
+FOR DELETE
+TO authenticated
+USING (true);
 
 -- STEP 5: Policy per UPDATE (negata al pubblico)
 -- Nessun utente anonimo può modificare prenotazioni
@@ -50,8 +65,9 @@ USING (false);
 -- NOTE IMPORTANTI:
 -- ============================================
 -- - Le policy sopra permettono INSERT a tutti (anon + authenticated)
--- - Le policy bloccano SELECT/DELETE/UPDATE per utenti anonimi
+-- - Le policy bloccano SELECT/DELETE per utenti anonimi
+-- - Gli utenti autenticati (admin) possono SELECT e DELETE le prenotazioni
 -- - Gli admin con service_role possono comunque accedere a tutto
--- - Per vedere le prenotazioni, usa il Dashboard Supabase o un backend admin
+-- - Per vedere le prenotazioni dall'Admin Dashboard, assicurati di essere autenticato
 -- ============================================
 

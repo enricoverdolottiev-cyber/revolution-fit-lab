@@ -203,22 +203,30 @@ function Component({ prop }: ComponentProps) {
 ```typescript
 // Always use typed Supabase client
 import { supabase } from '../lib/supabase'
-import type { Database } from '../types/database.types'
 
-// Type-safe insert
-const { error } = await supabase
-  .from('bookings')
-  .insert([{
-    name: formData.name,
-    email: formData.email,
-    phone: formData.phone,
-    class_type: formData.sessionType
-  }])
-
-// Always handle errors and null client gracefully
+// Always check for null client first
 if (!supabase) {
   // Graceful degradation
   return
+}
+
+// Type-safe insert with correct column mapping
+const payload = {
+  full_name: formData.name,        // Map form field to DB column
+  email: formData.email,
+  phone: formData.phone,
+  class_name: formData.sessionType, // Map form field to DB column
+  created_at: new Date().toISOString()
+}
+
+// Insert with type assertion if TypeScript inference fails
+const { error } = await supabase
+  .from('bookings')
+  .insert([payload] as any)
+
+if (error) {
+  // Handle error
+  throw error
 }
 ```
 
@@ -258,17 +266,38 @@ import Reveal from './components/ui/Reveal'
 
 ### Supabase Client
 - **Location:** `src/lib/supabase.ts`
-- **Type:** Typed client using `Database` interface
+- **Type:** Typed client using `Database` type (NOT interface)
 - **Pattern:** Always null-check before use (graceful degradation)
 - **Security:** RLS (Row Level Security) enabled via `supabase_security.sql`
+- **Export:** Exports `supabase: TypedSupabaseClient | null` and `TypedSupabaseClient` type
 
-### Database Types
+### Database Types (CRITICAL STRUCTURE)
 - **Location:** `src/types/database.types.ts`
-- **Structure:** 
-  - `Booking` interface for table structure
-  - `Database` interface for Supabase type system
-  - `Row`, `Insert`, `Update` helpers for type-safe operations
-- **Update Rule:** If database schema changes, update types first
+- **CRITICAL:** Must use `type Database = { ... }` (NOT `interface`)
+- **Required Structure:**
+  ```typescript
+  export type Database = {
+    public: {
+      Tables: {  // Note: Capital 'T' in Tables
+        bookings: {
+          Row: Booking
+          Insert: Omit<Booking, 'id'> & { created_at?: string }
+          Update: Partial<Omit<Booking, 'id' | 'created_at'>>
+        }
+      }
+      Views: { [_ in never]: never }      // Required by Supabase
+      Functions: { [_ in never]: never }  // Required by Supabase
+      Enums: { [_ in never]: never }      // Required by Supabase
+      CompositeTypes: { [_ in never]: never }  // Required by Supabase
+    }
+  }
+  ```
+- **Column Mapping (bookings table):**
+  - `full_name` (NOT `name`)
+  - `class_name` (NOT `class_type`)
+  - `created_at` (optional in Insert, auto-generated)
+  - `id` (auto-generated, excluded from Insert)
+- **Update Rule:** If database schema changes, update types first, then rebuild
 
 ### Security Best Practices
 - RLS policies in `supabase_security.sql`
@@ -277,6 +306,146 @@ import Reveal from './components/ui/Reveal'
 - Always validate data on client side before insert
 - Never expose sensitive operations to anonymous users
 
+### Database Operations Pattern
+```typescript
+import { supabase } from '../lib/supabase'
+
+// Always check for null client
+if (!supabase) {
+  // Handle gracefully
+  return
+}
+
+// Type-safe insert with explicit payload type
+const payload: {
+  full_name: string
+  email: string
+  phone: string
+  class_name: string
+  created_at: string
+} = {
+  full_name: formData.name,
+  email: formData.email,
+  phone: formData.phone,
+  class_name: formData.sessionType,
+  created_at: new Date().toISOString()
+}
+
+// Insert with type assertion if TypeScript inference fails
+const { error } = await supabase
+  .from('bookings')
+  .insert([payload] as any)  // Type assertion needed due to inference limitation
+```
+
+## TROUBLESHOOTING & MAINTENANCE
+
+### TS2769 Error: "No overload matches this call" for Supabase Insert
+**Problem:** TypeScript cannot infer the correct type for Supabase table operations, treating table as `never`.
+
+**Root Cause:** 
+- Incorrect `Database` type structure (using `interface` instead of `type`)
+- Missing required Supabase type properties (`Views`, `Functions`, `Enums`, `CompositeTypes`)
+- Wrong property name (`tables` instead of `Tables` with capital T)
+
+**Solution Step-by-Step (Applied 2025):**
+
+1. **Fix Database Type Structure (`src/types/database.types.ts`):**
+   - Change `interface Database` → `type Database = { ... }`
+   - Rename `tables` → `Tables` (capital T)
+   - Add required empty objects:
+     ```typescript
+     Views: { [_ in never]: never }
+     Functions: { [_ in never]: never }
+     Enums: { [_ in never]: never }
+     CompositeTypes: { [_ in never]: never }
+     ```
+
+2. **Verify Client Initialization (`src/lib/supabase.ts`):**
+   - Ensure `createClient<Database>(url, key)` uses correct generic type
+   - Export `TypedSupabaseClient` type for reuse
+   - Maintain `null` handling for graceful degradation
+
+3. **Update Component Usage (`src/components/BookingModal.tsx`):**
+   - Add explicit payload type annotation
+   - Use type assertion `as any` on insert array if needed:
+     ```typescript
+     .insert([payload] as any)
+     ```
+   - Always null-check before using client
+
+4. **Verify Column Mapping:**
+   - Ensure form fields map to correct DB columns:
+     - `name` → `full_name`
+     - `sessionType` → `class_name`
+     - Include `created_at: new Date().toISOString()`
+
+5. **Build Verification:**
+   - Run `npm run build` to verify TypeScript compilation
+   - Check for any remaining type errors
+   - Ensure production build succeeds
+
+### When Adding New Tables to Supabase
+
+1. **Update Database Schema** (Supabase Dashboard)
+   - Create table with desired columns
+   - Note exact column names (case-sensitive)
+
+2. **Update Type Definitions (`src/types/database.types.ts`):**
+   ```typescript
+   export interface NewTable {
+     id: string
+     created_at: string
+     // ... other columns
+   }
+
+   export type Database = {
+     public: {
+       Tables: {
+         bookings: { ... },
+         new_table: {  // Add here
+           Row: NewTable
+           Insert: Omit<NewTable, 'id'> & { created_at?: string }
+           Update: Partial<Omit<NewTable, 'id' | 'created_at'>>
+         }
+       }
+       // ... rest of structure
+     }
+   }
+   ```
+
+3. **Update RLS Policies (`supabase_security.sql`):**
+   - Add policies for new table following same pattern
+   - Test public access rules
+
+4. **Rebuild and Test:**
+   - Run `npm run build`
+   - Test insert/select operations
+   - Verify TypeScript errors resolved
+
+### Environment Variables Setup
+
+**Required Variables (`.env` file):**
+```env
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+```
+
+**Graceful Degradation:**
+- Client initialization never throws errors
+- Missing keys result in `null` client
+- Components must check `if (!supabase)` before use
+- Show user-friendly messages when backend unavailable
+
+### Database Column Naming Convention
+
+**Pattern:** Use `snake_case` for database columns
+- ✅ `full_name`, `class_name`, `created_at`
+- ❌ `fullName`, `className`, `createdAt`
+
+**Mapping in Components:**
+- Form state uses `camelCase` (React convention)
+- Payload mapping converts to `snake_case` before insert
+
 ## REMEMBER
 - **Current Phase:** Phase 5 (Production Ready)
 - **Primary Goal:** Stable, type-safe, production-ready application
@@ -284,4 +453,22 @@ import Reveal from './components/ui/Reveal'
 - **Style:** Urban/Dark with red accents, premium feel
 - **Approach:** Mobile-First, Type-Safe, Performance-Conscious, Secure
 - **Database:** Always use typed Supabase client, handle null cases gracefully
+- **Type Safety:** Use `type Database`, not `interface`. Include all required Supabase type properties.
+- **Build:** Always verify `npm run build` passes before committing database type changes
 
+# REVOLUTION FIT LAB - REGOLE DI SVILUPPO
+
+## RUOLO PRINCIPALE
+Agisci come un team composto da un Lead Architect e un UI/UX Designer.
+Il tuo obiettivo è completare la Roadmap (Step 1-4) mantenendo lo stile Urban Dark.
+
+## REGOLE TECNICHE
+- Stack: React, TypeScript, Tailwind, Supabase.
+- Database: Usa la tabella 'bookings' (full_name, email, phone, class_name).
+- Stile: Sfondo Zinc-950, testi Zinc-100, icone Lucide-React (stroke 1.5).
+- Animazioni: Usa sempre 'src/components/Reveal.tsx' per lo scroll.
+
+## REGOLE DI COMPORTAMENTO
+- Prima di modificare file critici, controlla le RLS di Supabase.
+- Assicurati che ogni nuova pagina sia responsive.
+- Non cambiare lo schema del database senza chiedere conferma.

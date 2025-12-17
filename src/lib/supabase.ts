@@ -10,9 +10,17 @@ export type TypedSupabaseClient = SupabaseClient<Database>
 let supabase: TypedSupabaseClient | null = null
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('⚠️ Supabase keys missing, backend disabled. Check your .env file.')
+  console.warn('⚠️ ATTENZIONE: Supabase keys missing, backend disabled.')
+  console.warn('⚠️ Controlla il file .env e assicurati che VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY siano impostati.')
+  console.warn('⚠️ L\'app funzionerà in modalità provvisoria senza autenticazione.')
 } else {
-  supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
+  try {
+    supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
+    console.log('✅ Supabase client inizializzato correttamente')
+  } catch (err) {
+    console.error('❌ Errore nell\'inizializzazione Supabase:', err)
+    supabase = null
+  }
 }
 
 export { supabase }
