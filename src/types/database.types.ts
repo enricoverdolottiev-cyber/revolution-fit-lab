@@ -8,10 +8,12 @@
 export interface Booking {
   id: string
   created_at: string
-  full_name: string
+  name: string
   email: string
   phone: string
-  class_name: string
+  class_type: string
+  status?: string // default: 'pending'
+  user_id?: string // Opzionale: collegamento all'utente loggato
 }
 
 export interface Profile {

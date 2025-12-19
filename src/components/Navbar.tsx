@@ -37,18 +37,33 @@ function Navbar({}: NavbarProps) {
     setIsScrolled(latest > 50)
   })
 
-  // Log pulito per debug: mostra ruolo solo quando non è in loading
+  // Log pulito per debug: mostra stato auth
   useEffect(() => {
-    if (!isLoading) {
-      console.log('Sistema Sbloccato - Ruolo attuale:', role)
-    }
-  }, [role, isLoading])
+    console.log('🔍 Navbar: Stato auth aggiornato:', { 
+      isLoading, 
+      hasUser: !!user, 
+      userId: user?.id,
+      userEmail: user?.email,
+      role,
+      isAdmin 
+    })
+  }, [role, isLoading, user, isAdmin])
 
   // Funzione per scrollare a una sezione
   const scrollToSection = (sectionId: string) => {
-    const element = document.getElementById(sectionId.replace('#', ''))
+    // Rimuovi il # se presente
+    const cleanId = sectionId.replace('#', '')
+    const element = document.getElementById(cleanId)
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      // Calcola l'offset per la navbar fissa (80px di altezza)
+      const navbarHeight = 80
+      const elementPosition = element.getBoundingClientRect().top + window.pageYOffset
+      const offsetPosition = elementPosition - navbarHeight
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      })
     }
   }
 
@@ -63,13 +78,9 @@ function Navbar({}: NavbarProps) {
       return
     }
 
-    // Se siamo in un'altra rotta, naviga alla Home con hash e poi scrolla
+    // Se siamo in un'altra rotta, naviga alla Home con hash
+    // React Router gestirà l'hash e Home.tsx farà lo scroll automatico
     navigate(`/${sectionId}`, { replace: false })
-    
-    // Aspetta che la Home sia caricata prima di scrollare
-    setTimeout(() => {
-      scrollToSection(sectionId)
-    }, 200)
   }
 
   const handleLogout = async () => {
@@ -108,13 +119,13 @@ function Navbar({}: NavbarProps) {
   }
 
   const getAuthButton = () => {
-    // Se isLoading è true, mostra versione semplificata senza pulsanti
-    if (isLoading) {
-      return null // Navbar semplificata durante il caricamento
-    }
-
-    // CRITICO: Se !user && !isLoading, mostra sempre "ACCEDI"
+    // Log per debug
+    console.log('🔍 Navbar getAuthButton:', { isLoading, hasUser: !!user, role, userId: user?.id })
+    
+    // CRITICO: Mostra sempre "ACCEDI" se non c'è utente, anche durante il loading
+    // Questo permette la navigazione alla pagina di login anche se il sistema sta ancora caricando
     if (!user) {
+      console.log('👤 Navbar: !user, mostro pulsante ACCEDI (anche durante loading)')
       return (
         <motion.div
           whileHover={{ scale: 1.05 }}
@@ -122,6 +133,9 @@ function Navbar({}: NavbarProps) {
         >
           <Link 
             to="/login"
+            onClick={() => {
+              console.log('🔍 Navbar: Click su Accedi. Stato auth:', { isLoading, user: !!user })
+            }}
             className="bg-brand-red hover:bg-red-600 text-white px-6 py-2.5 font-barlow font-bold uppercase tracking-wide transition-colors text-sm inline-block rounded"
           >
             ACCEDI
@@ -131,18 +145,20 @@ function Navbar({}: NavbarProps) {
     }
 
     // Utente loggato: mostra pulsante dinamico con dropdown
-    // Usa optional chaining e fallback per evitare errori se role è null
-    // Assicurati che role sia sempre definito prima di usarlo
+    // FALLBACK: Se role è null ma user esiste, assumiamo customer (default)
+    // Questo permette la navigazione anche se il profilo non è ancora stato caricato
     const buttonText = role === 'admin' 
       ? 'PANNELLO ADMIN' 
-      : role === 'customer' 
+      : role === 'customer' || (role === null && user)
         ? 'AREA PERSONALE' 
         : 'ACCOUNT'
     const buttonPath = role === 'admin' 
       ? '/admin' 
-      : role === 'customer' 
+      : role === 'customer' || (role === null && user)
         ? '/dashboard' 
         : '/'
+    
+    console.log('✅ Navbar: Utente loggato, mostro pulsante:', { buttonText, buttonPath, role })
 
     return (
       <div className="relative">
@@ -167,6 +183,13 @@ function Navbar({}: NavbarProps) {
             >
               <button
                 onClick={() => {
+                  console.log('🔍 Navigazione dashboard:', { 
+                    buttonText, 
+                    buttonPath, 
+                    role, 
+                    user: !!user,
+                    userId: user?.id 
+                  })
                   navigate(buttonPath)
                   setIsDropdownOpen(false)
                 }}
@@ -220,26 +243,57 @@ function Navbar({}: NavbarProps) {
 
             {/* Desktop Navigation Links - Centrati */}
             <div className="hidden md:flex items-center gap-8">
-              {navLinks.map((link) => (
-                <motion.button
-                  key={link.href}
-                  onClick={() => handleNavigation(link.href)}
-                  className="relative font-barlow text-base font-medium text-brand-text uppercase tracking-wide group"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <span className="relative z-10 transition-colors group-hover:text-brand-red">
-                    {link.name}
-                  </span>
-                  {/* Underline effect */}
-                  <motion.span
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-red origin-left"
-                    initial={{ scaleX: 0 }}
-                    whileHover={{ scaleX: 1 }}
-                    transition={{ duration: 0.3, ease: 'easeOut' }}
-                  />
-                </motion.button>
-              ))}
+              {navLinks.map((link) => {
+                // Se siamo sulla Home, usa button per scroll diretto
+                // Altrimenti usa Link per navigazione React Router
+                if (location.pathname === '/') {
+                  return (
+                    <motion.button
+                      key={link.href}
+                      onClick={() => handleNavigation(link.href)}
+                      className="relative font-barlow text-base font-medium text-brand-text uppercase tracking-wide group"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <span className="relative z-10 transition-colors group-hover:text-brand-red">
+                        {link.name}
+                      </span>
+                      {/* Underline effect */}
+                      <motion.span
+                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-red origin-left"
+                        initial={{ scaleX: 0 }}
+                        whileHover={{ scaleX: 1 }}
+                        transition={{ duration: 0.3, ease: 'easeOut' }}
+                      />
+                    </motion.button>
+                  )
+                }
+                // Usa Link per mantenere il contesto React Router
+                return (
+                  <motion.div
+                    key={link.href}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Link
+                      to={`/${link.href}`}
+                      onClick={() => setIsMenuOpen(false)}
+                      className="relative font-barlow text-base font-medium text-brand-text uppercase tracking-wide group block"
+                    >
+                      <span className="relative z-10 transition-colors group-hover:text-brand-red">
+                        {link.name}
+                      </span>
+                      {/* Underline effect */}
+                      <motion.span
+                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-red origin-left"
+                        initial={{ scaleX: 0 }}
+                        whileHover={{ scaleX: 1 }}
+                        transition={{ duration: 0.3, ease: 'easeOut' }}
+                      />
+                    </Link>
+                  </motion.div>
+                )
+              })}
               {/* Link Dashboard Admin solo per Admin */}
               {isAdmin && !isLoading && (
                 <motion.div
@@ -298,20 +352,45 @@ function Navbar({}: NavbarProps) {
               transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
               className="flex flex-col items-center justify-center h-full gap-12"
             >
-              {navLinks.map((link, index) => (
-                <motion.button
-                  key={link.href}
-                  onClick={() => handleNavigation(link.href)}
-                  className="font-barlow text-4xl md:text-5xl font-bold text-brand-text uppercase tracking-wide hover:text-brand-red transition-colors"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1, duration: 0.3 }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  {link.name}
-                </motion.button>
-              ))}
+              {navLinks.map((link, index) => {
+                // Se siamo sulla Home, usa button per scroll diretto
+                // Altrimenti usa Link per navigazione React Router
+                if (location.pathname === '/') {
+                  return (
+                    <motion.button
+                      key={link.href}
+                      onClick={() => handleNavigation(link.href)}
+                      className="font-barlow text-4xl md:text-5xl font-bold text-brand-text uppercase tracking-wide hover:text-brand-red transition-colors"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1, duration: 0.3 }}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      {link.name}
+                    </motion.button>
+                  )
+                }
+                // Usa Link per mantenere il contesto React Router
+                return (
+                  <motion.div
+                    key={link.href}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1, duration: 0.3 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Link
+                      to={`/${link.href}`}
+                      onClick={() => setIsMenuOpen(false)}
+                      className="font-barlow text-4xl md:text-5xl font-bold text-brand-text uppercase tracking-wide hover:text-brand-red transition-colors block"
+                    >
+                      {link.name}
+                    </Link>
+                  </motion.div>
+                )
+              })}
               {/* Link Dashboard Admin solo per Admin (Mobile) */}
               {isAdmin && !isLoading && (
                 <motion.div

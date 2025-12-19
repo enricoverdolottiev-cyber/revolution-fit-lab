@@ -23,8 +23,14 @@ export function useAuth(): AuthState {
   useEffect(() => {
     let isMounted = true
     let safetyTimeout: NodeJS.Timeout | null = null
+    let profileFetchTimeout: NodeJS.Timeout | null = null
+    let isFetchingProfile = false // Flag per prevenire fetch multipli simultanei
+
+    // Log stato al mount
+    console.log('🔍 Hook useAuth montato - verifica sessione in corso...')
 
     // TIMEOUT DI SICUREZZA: forza setIsLoading(false) dopo 2 secondi massimo
+    // Ridotto a 2s per sbloccare più velocemente la navigazione
     safetyTimeout = setTimeout(() => {
       if (isMounted) {
         console.warn('⏱️ Timeout sicurezza: forzo setIsLoading(false) dopo 2s')
@@ -40,9 +46,29 @@ export function useAuth(): AuthState {
         return
       }
       
+      // PREVENZIONE LOOP: Se c'è già un fetch in corso, ignora questa chiamata
+      if (isFetchingProfile) {
+        console.log('⏸️ Fetch profilo già in corso, ignoro chiamata duplicata')
+        return
+      }
+      
+      isFetchingProfile = true
+      
       // FALLBACK TEMPORANEO: Email admin hardcoded per bypassare crash database
       const ADMIN_EMAIL = 'enricoverdolotti.ev@gmail.com'
       const isAdminEmail = userEmail === ADMIN_EMAIL
+      
+      // Timeout per il fetch del profilo: se impiega più di 2s, sblocca l'app
+      // ma mantiene la sessione attiva
+      profileFetchTimeout = setTimeout(() => {
+        if (isMounted) {
+          console.warn('⏱️ Timeout fetch profilo: sblocco app ma mantengo sessione')
+          // Se abbiamo già l'utente ma il profilo tarda, sblocchiamo l'app
+          // Il profilo verrà caricato in background
+          setIsLoading(false)
+          isFetchingProfile = false
+        }
+      }, 2000)
       
       try {
         // Query SEMPLIFICATA: solo 'role', nessun join o logica complessa
@@ -64,6 +90,11 @@ export function useAuth(): AuthState {
               console.log('Sistema Sbloccato - Ruolo attuale: admin (fallback)')
               setRole('admin')
               setProfile(null) // Profilo non disponibile ma ruolo sì
+              if (profileFetchTimeout) {
+                clearTimeout(profileFetchTimeout)
+                profileFetchTimeout = null
+              }
+              isFetchingProfile = false
               return
             }
             
@@ -72,6 +103,11 @@ export function useAuth(): AuthState {
               setRole(null)
               setProfile(null)
             }
+            if (profileFetchTimeout) {
+              clearTimeout(profileFetchTimeout)
+              profileFetchTimeout = null
+            }
+            isFetchingProfile = false
             return // Esci senza bloccare l'app
           }
           
@@ -82,6 +118,11 @@ export function useAuth(): AuthState {
               console.log('🔄 Fallback attivato: profilo non trovato ma email admin, ruolo impostato a admin')
               setRole('admin')
               setProfile(null)
+              if (profileFetchTimeout) {
+                clearTimeout(profileFetchTimeout)
+                profileFetchTimeout = null
+              }
+              isFetchingProfile = false
               return
             }
             
@@ -89,6 +130,11 @@ export function useAuth(): AuthState {
               setRole(null)
               setProfile(null)
             }
+            if (profileFetchTimeout) {
+              clearTimeout(profileFetchTimeout)
+              profileFetchTimeout = null
+            }
+            isFetchingProfile = false
             return
           }
           
@@ -100,6 +146,11 @@ export function useAuth(): AuthState {
             console.log('🔄 Fallback attivato: errore query ma email admin, ruolo impostato a admin')
             setRole('admin')
             setProfile(null)
+            if (profileFetchTimeout) {
+              clearTimeout(profileFetchTimeout)
+              profileFetchTimeout = null
+            }
+            isFetchingProfile = false
             return
           }
           
@@ -107,6 +158,11 @@ export function useAuth(): AuthState {
             setRole(null)
             setProfile(null)
           }
+          if (profileFetchTimeout) {
+            clearTimeout(profileFetchTimeout)
+            profileFetchTimeout = null
+          }
+          isFetchingProfile = false
           return
         }
         
@@ -116,6 +172,12 @@ export function useAuth(): AuthState {
           console.log('✅ Ruolo caricato:', profileRole)
           console.log('Sistema Sbloccato - Ruolo attuale:', profileRole)
           setRole(profileRole)
+          
+          // Cancella timeout profilo se completato in tempo
+          if (profileFetchTimeout) {
+            clearTimeout(profileFetchTimeout)
+            profileFetchTimeout = null
+          }
           
           // Carica profilo completo solo se necessario (evita doppia query)
           const { data: profileData } = await supabase
@@ -127,6 +189,8 @@ export function useAuth(): AuthState {
           if (profileData && isMounted) {
             setProfile(profileData as Profile)
           }
+          
+          isFetchingProfile = false
         } else if (isMounted) {
           // Nessun dato restituito
           // FALLBACK: Se è email admin, imposta ruolo admin
@@ -134,11 +198,21 @@ export function useAuth(): AuthState {
             console.log('🔄 Fallback attivato: nessun dato ma email admin, ruolo impostato a admin')
             setRole('admin')
             setProfile(null)
+            if (profileFetchTimeout) {
+              clearTimeout(profileFetchTimeout)
+              profileFetchTimeout = null
+            }
+            isFetchingProfile = false
             return
           }
           
           setRole(null)
           setProfile(null)
+          if (profileFetchTimeout) {
+            clearTimeout(profileFetchTimeout)
+            profileFetchTimeout = null
+          }
+          isFetchingProfile = false
         }
       } catch (err) {
         // Catch per errori imprevisti (inclusi errori 500)
@@ -150,6 +224,11 @@ export function useAuth(): AuthState {
           console.log('Sistema Sbloccato - Ruolo attuale: admin (fallback exception)')
           setRole('admin')
           setProfile(null)
+          if (profileFetchTimeout) {
+            clearTimeout(profileFetchTimeout)
+            profileFetchTimeout = null
+          }
+          isFetchingProfile = false
           return
         }
         
@@ -158,6 +237,11 @@ export function useAuth(): AuthState {
           setRole(null)
           setProfile(null)
         }
+        if (profileFetchTimeout) {
+          clearTimeout(profileFetchTimeout)
+          profileFetchTimeout = null
+        }
+        isFetchingProfile = false
       }
     }
 
@@ -171,36 +255,76 @@ export function useAuth(): AuthState {
       return
     }
 
-    // Controlla sessione iniziale
-    supabase.auth.getSession().then(async ({ data: { session }, error: sessionError }) => {
-      if (!isMounted) return
+    // Controlla sessione iniziale - ESECUZIONE IMMEDIATA
+    const checkSession = async () => {
+      if (!isMounted || !supabase) return
       
-      if (sessionError) {
-        console.error('❌ Errore nel recupero sessione:', sessionError)
-        setUser(null)
-        setRole(null)
-        setProfile(null)
-        setIsLoading(false)
-        return
-      }
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        if (!isMounted) return
+        
+        // Log stato sessione al mount
+        console.log('🔍 Stato Auth al Mount:', { 
+          session: !!session, 
+          user: !!session?.user,
+          userId: session?.user?.id,
+          email: session?.user?.email 
+        })
+        
+        if (sessionError) {
+          console.error('❌ Errore nel recupero sessione:', sessionError)
+          setUser(null)
+          setRole(null)
+          setProfile(null)
+          setIsLoading(false)
+          if (safetyTimeout) {
+            clearTimeout(safetyTimeout)
+          }
+          return
+        }
 
-      if (session?.user) {
-        setUser({ id: session.user.id, email: session.user.email ?? undefined })
-        // CRITICO: Aspetta che fetchUserProfile finisca prima di impostare isLoading=false
-        // Passa anche l'email per il fallback
-        await fetchUserProfile(session.user.id, session.user.email ?? undefined)
-      } else {
-        setUser(null)
-        setRole(null)
-        setProfile(null)
+        if (session?.user) {
+          setUser({ id: session.user.id, email: session.user.email ?? undefined })
+          // CRITICO: Aspetta che fetchUserProfile finisca prima di impostare isLoading=false
+          // Passa anche l'email per il fallback
+          await fetchUserProfile(session.user.id, session.user.email ?? undefined)
+        } else {
+          // CRITICO: Se non c'è sessione, sblocca immediatamente senza aspettare
+          console.log('✅ useAuth: Nessuna sessione attiva - sblocco immediato')
+          setUser(null)
+          setRole(null)
+          setProfile(null)
+          // Sblocca immediatamente quando non c'è sessione
+          if (safetyTimeout) {
+            clearTimeout(safetyTimeout)
+            safetyTimeout = null
+          }
+          setIsLoading(false)
+          return // Esci subito, non continuare
+        }
+        
+        if (safetyTimeout) {
+          clearTimeout(safetyTimeout)
+        }
+        // CRITICO: isLoading viene impostato a false solo dopo che fetchUserProfile è completato
+        setIsLoading(false)
+      } catch (err) {
+        console.error('❌ Errore critico in checkSession:', err)
+        if (isMounted) {
+          setUser(null)
+          setRole(null)
+          setProfile(null)
+          setIsLoading(false)
+          if (safetyTimeout) {
+            clearTimeout(safetyTimeout)
+          }
+        }
       }
-      
-      if (safetyTimeout) {
-        clearTimeout(safetyTimeout)
-      }
-      // CRITICO: isLoading viene impostato a false solo dopo che fetchUserProfile è completato
-      setIsLoading(false)
-    })
+    }
+    
+    // Esegui immediatamente
+    checkSession()
 
     // Ascolta cambiamenti autenticazione
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -243,6 +367,9 @@ export function useAuth(): AuthState {
       isMounted = false
       if (safetyTimeout) {
         clearTimeout(safetyTimeout)
+      }
+      if (profileFetchTimeout) {
+        clearTimeout(profileFetchTimeout)
       }
       subscription.unsubscribe()
     }

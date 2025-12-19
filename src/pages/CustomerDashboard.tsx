@@ -16,9 +16,12 @@ import { useAuth } from '../hooks/useAuth'
 import type { Booking } from '../types/database.types'
 import { fadeInUp, staggerContainer } from '../utils/animations'
 
+// Constants
+const HOURS_PER_SESSION = 1 // Costante modificabile per ore per sessione
+
 interface NextSession {
   id: string
-  class_name: string
+  class_type: string
   created_at: string
   date?: Date
 }
@@ -31,7 +34,7 @@ interface UserStats {
 
 interface RecentActivity {
   id: string
-  class_name: string
+  class_type: string
   date: string
   icon: typeof Activity
 }
@@ -46,7 +49,7 @@ const motivationalQuotes = [
 ]
 
 function CustomerDashboard() {
-  const { user, isLoading: authLoading } = useAuth()
+  const { user, profile, isLoading: authLoading } = useAuth()
   const [nextSession, setNextSession] = useState<NextSession | null>(null)
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([])
   const [stats, setStats] = useState<UserStats>({
@@ -54,12 +57,26 @@ function CustomerDashboard() {
     streakDays: 0,
     totalHours: 0,
   })
+  const [performanceData, setPerformanceData] = useState<number[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [countdown, setCountdown] = useState<string>('')
 
-  // Get user name from email or profile
+  // Log per debug
+  useEffect(() => {
+    console.log('📊 CustomerDashboard montato:', { 
+      hasUser: !!user, 
+      userId: user?.id, 
+      userEmail: user?.email,
+      authLoading,
+      hasProfile: !!profile 
+    })
+  }, [user, authLoading, profile])
+
+  // Get user name from profile or email fallback
   const userName = useMemo(() => {
+    // Usa profile?.name se disponibile (se Profile ha name in futuro)
+    // Per ora Profile non ha name, quindi usiamo il fallback email
     if (user?.email) {
       return user.email.split('@')[0].split('.')[0]
         .split('')
@@ -67,7 +84,7 @@ function CustomerDashboard() {
         .join('')
     }
     return 'Atleta'
-  }, [user])
+  }, [user, profile])
 
   // Get random motivational quote
   const motivationalQuote = useMemo(() => {
@@ -82,6 +99,84 @@ function CustomerDashboard() {
       month: 'long',
       year: 'numeric',
     }).format(date)
+  }
+
+  /**
+   * Calcola i giorni consecutivi di allenamento (streak)
+   * Basato sulle date delle prenotazioni passate
+   * Conta giorni consecutivi partendo da ieri (oggi non conta nello streak)
+   */
+  const calculateStreakDays = (bookings: Booking[]): number => {
+    if (bookings.length === 0) return 0
+
+    const now = new Date()
+    now.setHours(0, 0, 0, 0) // Reset alle 00:00 per confronto per giorno
+
+    // Estrai tutte le date uniche (senza ora) dalle prenotazioni passate
+    const bookingDatesSet = new Set<string>()
+    bookings.forEach(booking => {
+      const bookingDate = new Date(booking.created_at)
+      bookingDate.setHours(0, 0, 0, 0)
+      // Solo prenotazioni passate (escludiamo oggi e futuro)
+      if (bookingDate < now) {
+        bookingDatesSet.add(bookingDate.toISOString().split('T')[0])
+      }
+    })
+
+    if (bookingDatesSet.size === 0) return 0
+
+    // Calcola streak partendo da ieri e andando indietro
+    let streak = 0
+    let checkDate = new Date(now)
+    checkDate.setDate(checkDate.getDate() - 1) // Inizia da ieri
+
+    // Continua a controllare giorni precedenti finché troviamo prenotazioni consecutive
+    while (true) {
+      const checkDateStr = checkDate.toISOString().split('T')[0]
+      
+      if (bookingDatesSet.has(checkDateStr)) {
+        // Trovata prenotazione per questo giorno, incrementa streak
+        streak++
+        checkDate.setDate(checkDate.getDate() - 1) // Vai al giorno precedente
+      } else {
+        // Nessuna prenotazione per questo giorno, interrompi lo streak
+        break
+      }
+    }
+
+    return streak
+  }
+
+  /**
+   * Calcola i dati del grafico performance (ultimi 7 giorni)
+   * Restituisce un array di 7 valori normalizzati tra 0 e 1
+   * Indice 0 = 6 giorni fa, Indice 6 = oggi (ordine da sinistra a destra nel grafico)
+   */
+  const calculatePerformanceData = (bookings: Booking[]): number[] => {
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
+
+    // Array per i 7 giorni (indice 0 = 6 giorni fa, indice 6 = oggi)
+    const dailyCounts: number[] = new Array(7).fill(0)
+
+    // Conta prenotazioni per ogni giorno degli ultimi 7 giorni
+    bookings.forEach(booking => {
+      const bookingDate = new Date(booking.created_at)
+      bookingDate.setHours(0, 0, 0, 0)
+
+      // Calcola giorni fa (0 = oggi, 1 = ieri, 6 = 6 giorni fa)
+      const daysAgo = Math.floor((now.getTime() - bookingDate.getTime()) / (1000 * 60 * 60 * 24))
+
+      // Se è negli ultimi 7 giorni, incrementa il contatore
+      // Inverti l'indice: giorni fa 6 → indice 0, giorni fa 0 → indice 6
+      if (daysAgo >= 0 && daysAgo < 7) {
+        dailyCounts[6 - daysAgo]++
+      }
+    })
+
+    // Normalizza i valori tra 0 e 1 (max = massimo conteggio tra i 7 giorni)
+    const maxCount = Math.max(...dailyCounts, 1) // Evita divisione per 0
+    return dailyCounts.map(count => count / maxCount)
   }
 
   // Calculate countdown to next session
@@ -120,16 +215,35 @@ function CustomerDashboard() {
   // Fetch user bookings and data
   useEffect(() => {
     const fetchUserData = async () => {
-      if (!supabase || !user) {
+      console.log('🔄 CustomerDashboard: Tentativo fetch dati', { 
+        hasSupabase: !!supabase, 
+        hasUser: !!user, 
+        userEmail: user?.email,
+        authLoading 
+      })
+      
+      // Permetti di procedere anche se profile è null ma user è presente
+      if (!supabase) {
+        console.error('❌ CustomerDashboard: Supabase non disponibile')
+        setError('Servizio momentaneamente non disponibile')
+        setIsLoading(false)
+        return
+      }
+      
+      if (!user) {
+        console.error('❌ CustomerDashboard: User non disponibile')
+        setError('Utente non autenticato')
         setIsLoading(false)
         return
       }
 
       setIsLoading(true)
       setError(null)
+      console.log('✅ CustomerDashboard: Inizio fetch dati per', user.email)
 
       try {
-        // Fetch bookings for this user
+        // Fetch bookings for this user (filtra per email, user_id non disponibile in bookings)
+        console.log('📥 CustomerDashboard: Fetch bookings per email:', user.email)
         const { data: bookingsData, error: bookingsError } = await supabase
           .from('bookings')
           .select('*')
@@ -137,68 +251,100 @@ function CustomerDashboard() {
           .order('created_at', { ascending: false })
 
         if (bookingsError) {
+          console.error('❌ CustomerDashboard: Errore fetch bookings:', bookingsError)
           throw bookingsError
         }
+        
+        console.log('✅ CustomerDashboard: Bookings recuperati:', bookingsData?.length || 0)
 
         const bookings = (bookingsData || []) as Booking[]
-
-        // Find next session (most recent future booking or most recent)
         const now = new Date()
-        const futureBookings = bookings.filter(b => {
-          const bookingDate = new Date(b.created_at)
-          return bookingDate > now
-        })
+
+        // Find next session (SOLO prenotazioni future)
+        const futureBookings = bookings
+          .filter(b => {
+            const bookingDate = new Date(b.created_at)
+            return bookingDate > now
+          })
+          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) // Ordina per data crescente (più vicina prima)
 
         if (futureBookings.length > 0) {
           const next = futureBookings[0]
           setNextSession({
             id: next.id,
-            class_name: next.class_name,
+            class_type: next.class_type,
             created_at: next.created_at,
             date: new Date(next.created_at),
           })
-        } else if (bookings.length > 0) {
-          // Use most recent as next session
-          const mostRecent = bookings[0]
-          setNextSession({
-            id: mostRecent.id,
-            class_name: mostRecent.class_name,
-            created_at: mostRecent.created_at,
-            date: new Date(mostRecent.created_at),
-          })
+        } else {
+          // Nessuna prenotazione futura
+          setNextSession(null)
         }
 
-        // Get recent activities (last 3 sessions)
-        const recent = bookings.slice(0, 3).map(b => ({
-          id: b.id,
-          class_name: b.class_name,
-          date: formatDate(new Date(b.created_at)),
-          icon: Activity,
-        }))
-        setRecentActivities(recent)
+        // Get recent activities (last 3 sessions, solo passate o in corso)
+        const pastBookings = bookings
+          .filter(b => {
+            const bookingDate = new Date(b.created_at)
+            return bookingDate <= now
+          })
+          .slice(0, 3)
+          .map(b => ({
+            id: b.id,
+            class_type: b.class_type,
+            date: formatDate(new Date(b.created_at)),
+            icon: Activity,
+          }))
+        setRecentActivities(pastBookings)
 
-        // Calculate stats (mock data for now, but structured for future DB integration)
-        const thisMonth = bookings.filter(b => {
+        // Calcola statistiche reali
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+        const sessionsThisMonth = bookings.filter(b => {
           const bookingDate = new Date(b.created_at)
-          const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
           return bookingDate >= monthStart
         }).length
 
+        // Calcola streak giorni consecutivi
+        const streakDays = calculateStreakDays(bookings)
+
+        // Calcola ore totali (usa costante modificabile)
+        const totalHours = bookings.length * HOURS_PER_SESSION
+
         setStats({
-          sessionsThisMonth: thisMonth,
-          streakDays: Math.min(thisMonth * 2, 14), // Mock streak
-          totalHours: bookings.length * 1.5, // Mock hours (1.5h per session)
+          sessionsThisMonth,
+          streakDays,
+          totalHours,
         })
+
+        // Calcola dati grafico performance (ultimi 7 giorni)
+        const performance = calculatePerformanceData(bookings)
+        setPerformanceData(performance)
+        
+        console.log('✅ CustomerDashboard: Dati caricati con successo')
       } catch (err) {
-        console.error('Error fetching user data:', err)
+        console.error('❌ CustomerDashboard: Errore nel fetch dati:', err)
         setError('Errore nel caricamento dei dati')
       } finally {
         setIsLoading(false)
+        console.log('🏁 CustomerDashboard: Fetch completato, isLoading = false')
       }
     }
 
+    console.log('🔍 CustomerDashboard: Condizioni fetch:', { 
+      authLoading, 
+      hasUser: !!user,
+      shouldFetch: !authLoading && !!user 
+    })
+    
     if (!authLoading && user) {
       fetchUserData()
+    } else {
+      console.warn('⚠️ CustomerDashboard: Fetch non eseguito - condizioni non soddisfatte')
+      if (authLoading) {
+        console.log('⏳ CustomerDashboard: In attesa che authLoading diventi false')
+      }
+      if (!user) {
+        console.log('⏳ CustomerDashboard: In attesa che user sia disponibile')
+      }
     }
   }, [user, authLoading])
 
@@ -206,7 +352,7 @@ function CustomerDashboard() {
     window.dispatchEvent(new CustomEvent('openBooking'))
   }
 
-  // Skeleton Loader Component
+  // Skeleton Loader Component (dimensioni riflettono le card reali per evitare layout shift)
   const SkeletonCard = ({ className = '' }: { className?: string }) => (
     <div className={`bg-zinc-900/40 backdrop-blur-xl border border-zinc-800/50 rounded-2xl p-6 ${className}`}>
       <div className="animate-pulse">
@@ -218,6 +364,7 @@ function CustomerDashboard() {
   )
 
   if (authLoading || isLoading) {
+    console.log('⏳ CustomerDashboard: Mostro skeleton loader', { authLoading, isLoading })
     return (
       <div className="min-h-screen bg-brand-bg pt-20 pb-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
@@ -232,6 +379,12 @@ function CustomerDashboard() {
       </div>
     )
   }
+  
+  console.log('✅ CustomerDashboard: Render completo, dati pronti', { 
+    hasUser: !!user,
+    hasNextSession: !!nextSession,
+    statsCount: stats.sessionsThisMonth
+  })
 
   if (error) {
     return (
@@ -323,7 +476,7 @@ function CustomerDashboard() {
               {nextSession ? (
                 <>
                   <h3 className="font-barlow text-xl font-black text-brand-text uppercase mb-2">
-                    {nextSession.class_name}
+                    {nextSession.class_type}
                   </h3>
                   <div className="flex items-center gap-2 text-zinc-400 font-inter text-sm mb-4">
                     <Clock className="w-4 h-4" />
@@ -414,26 +567,39 @@ function CustomerDashboard() {
               </div>
             </div>
 
-            {/* Chart Placeholder */}
+            {/* Dynamic Performance Chart (ultimi 7 giorni) */}
             <div className="relative h-48 rounded-lg overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-t from-orange-500/20 via-orange-500/10 to-transparent"></div>
               
-              {/* Simulated chart bars */}
+              {/* Chart bars dinamiche basate sui dati reali */}
               <div className="absolute bottom-0 left-0 right-0 flex items-end justify-around gap-2 px-4 pb-4">
-                {[0.3, 0.5, 0.7, 0.6, 0.9, 0.8, 0.95].map((height, i) => (
-                  <motion.div
-                    key={i}
-                    className="w-8 bg-gradient-to-t from-orange-500 to-orange-400 rounded-t"
-                    initial={{ height: 0 }}
-                    animate={{ height: `${height * 100}%` }}
-                    transition={{ delay: i * 0.1, duration: 0.5 }}
-                  />
-                ))}
+                {performanceData.length > 0 ? (
+                  performanceData.map((height, i) => (
+                    <motion.div
+                      key={i}
+                      className="w-8 bg-gradient-to-t from-orange-500 to-orange-400 rounded-t"
+                      initial={{ height: 0 }}
+                      animate={{ height: `${Math.max(height * 100, 5)}%` }} // Minimo 5% per visibilità
+                      transition={{ delay: i * 0.1, duration: 0.5 }}
+                    />
+                  ))
+                ) : (
+                  // Fallback: mostra barre vuote durante il caricamento
+                  Array.from({ length: 7 }).map((_, i) => (
+                    <motion.div
+                      key={i}
+                      className="w-8 bg-gradient-to-t from-orange-500/30 to-orange-400/30 rounded-t"
+                      initial={{ height: 0 }}
+                      animate={{ height: '5%' }}
+                      transition={{ delay: i * 0.1, duration: 0.5 }}
+                    />
+                  ))
+                )}
               </div>
             </div>
 
             <p className="font-inter text-xs text-zinc-500 mt-4 text-center">
-              Crescita settimanale
+              Sessioni ultimi 7 giorni
             </p>
           </motion.div>
 
@@ -466,7 +632,7 @@ function CustomerDashboard() {
                       </div>
                       <div className="flex-1">
                         <p className="font-barlow font-bold text-brand-text uppercase">
-                          {activity.class_name}
+                          {activity.class_type}
                         </p>
                         <p className="font-inter text-sm text-zinc-400">
                           {activity.date}

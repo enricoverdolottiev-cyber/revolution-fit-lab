@@ -163,11 +163,11 @@ function Dashboard() {
                       <div className="flex items-center gap-3 mb-2">
                         <User className="w-5 h-5 text-brand-red" />
                         <h3 className="font-barlow text-lg font-bold uppercase">
-                          {booking.full_name}
+                          {booking.name}
                         </h3>
                       </div>
                       <p className="text-zinc-400 font-inter text-sm mb-1">
-                        <span className="text-zinc-500">Classe:</span> {booking.class_name}
+                        <span className="text-zinc-500">Classe:</span> {booking.class_type}
                       </p>
                       <p className="text-zinc-400 font-inter text-sm">
                         <span className="text-zinc-500">Data:</span> {formatDate(booking.created_at)}

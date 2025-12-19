@@ -295,7 +295,7 @@ function AdminDashboard() {
                           {formatDate(booking.created_at)}
                         </td>
                         <td className="px-6 py-4 font-inter text-sm text-white font-medium">
-                          {booking.full_name}
+                          {booking.name}
                         </td>
                         <td className="px-6 py-4 font-inter text-sm text-zinc-300">
                           {booking.email}
@@ -304,7 +304,7 @@ function AdminDashboard() {
                           {booking.phone}
                         </td>
                         <td className="px-6 py-4 font-inter text-sm text-zinc-300">
-                          {booking.class_name}
+                          {booking.class_type}
                         </td>
                         <td className="px-6 py-4 text-right">
                           <button

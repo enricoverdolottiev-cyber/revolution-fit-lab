@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import BookingModal from './components/BookingModal'
 import Home from './pages/Home'
@@ -10,6 +10,12 @@ import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
   const [isBookingOpen, setIsBookingOpen] = useState(false)
+  const location = useLocation()
+  
+  // Log per debug routing
+  useEffect(() => {
+    console.log('🛣️ App: Cambio rotta:', location.pathname)
+  }, [location.pathname])
 
   // Ascolta l'evento custom per aprire il booking modal da qualsiasi componente
   useEffect(() => {

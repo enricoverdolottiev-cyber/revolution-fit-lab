@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { X, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
 import { fadeInUp } from '../utils/animations'
 
 interface BookingModalProps {
@@ -12,6 +13,7 @@ interface BookingModalProps {
 type FormState = 'idle' | 'loading' | 'success' | 'error'
 
 function BookingModal({ isOpen, onClose }: BookingModalProps) {
+  const { user } = useAuth()
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -20,6 +22,22 @@ function BookingModal({ isOpen, onClose }: BookingModalProps) {
   })
   const [state, setState] = useState<FormState>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  // Pre-compila email se l'utente è loggato quando il modal si apre
+  useEffect(() => {
+    if (isOpen && user?.email) {
+      setFormData(prev => {
+        // Pre-compila solo se l'email è vuota (non sovrascrive input utente)
+        if (!prev.email) {
+          return {
+            ...prev,
+            email: user.email || ''
+          }
+        }
+        return prev
+      })
+    }
+  }, [isOpen, user?.email])
 
   // Reset form when modal closes
   useEffect(() => {
@@ -55,10 +73,42 @@ function BookingModal({ isOpen, onClose }: BookingModalProps) {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     
+    // Debug: log iniziale
+    console.log('🔍 Tentativo prenotazione per user:', user?.id)
+    
     // Guard clause: check if Supabase is configured
     if (!supabase) {
       setState('error')
       setErrorMessage('Servizio prenotazioni momentaneamente non disponibile. Contattaci su Instagram.')
+      return
+    }
+
+    // Variabile per tracciare l'utente corrente (da useAuth o recuperato direttamente)
+    let currentUser = user
+
+    // Se user è null, prova a recuperare la sessione direttamente da Supabase come ultima spiaggia
+    if (!currentUser?.id && supabase) {
+      console.log('⚠️ User non disponibile da useAuth, tentativo recupero sessione diretta...')
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        if (sessionError) {
+          console.error('❌ Errore nel recupero sessione:', sessionError)
+        } else if (session?.user) {
+          console.log('✅ Sessione recuperata direttamente:', session.user.id)
+          currentUser = { id: session.user.id, email: session.user.email ?? undefined }
+        } else {
+          console.warn('⚠️ Nessuna sessione attiva trovata')
+        }
+      } catch (sessionErr) {
+        console.error('❌ Errore critico nel recupero sessione:', sessionErr)
+      }
+    }
+
+    // Se dopo il tentativo l'utente è ancora mancante, mostra errore specifico
+    if (!currentUser?.id) {
+      setState('error')
+      setErrorMessage('Sessione scaduta o utente non riconosciuto. Prova a ricaricare la pagina.')
       return
     }
 
@@ -67,22 +117,32 @@ function BookingModal({ isOpen, onClose }: BookingModalProps) {
 
     try {
       // Map form data to database column names
+      // Note: user_id è opzionale ma raccomandato per collegare la prenotazione all'utente
+      // Se la colonna user_id non esiste nel database, verrà semplicemente ignorata
+      // created_at viene generato automaticamente da Supabase, non lo inviamo manualmente
+      // status ha default 'pending' nel database, non lo inviamo manualmente
       const payload: {
-        full_name: string
+        name: string
         email: string
         phone: string
-        class_name: string
-        created_at: string
+        class_type: string
+        user_id?: string // Opzionale: aggiunto se il database supporta questo campo
       } = {
-        full_name: formData.name,
+        name: formData.name,
         email: formData.email,
         phone: formData.phone,
-        class_name: formData.sessionType,
-        created_at: new Date().toISOString()
+        class_type: formData.sessionType,
+        // Aggiungi user_id solo se disponibile (raccomandato per dashboard)
+        ...(currentUser.id && { user_id: currentUser.id })
       }
 
+      // Debug: log dei dati inviati
+      console.log('📤 Dati inviati a Supabase:', payload)
+      console.log('📤 User ID incluso:', !!payload.user_id)
+
       // Insert booking into Supabase
-      // Type assertion: after null check, supabase is guaranteed to be TypedSupabaseClient
+      // Type assertion: dopo il null check, supabase è garantito essere TypedSupabaseClient
+      // Usiamo 'as any' perché user_id potrebbe non essere nel tipo Booking ma esistere nel DB
       const { error: dbError } = await supabase
         .from('bookings')
         .insert([payload] as any)
@@ -92,10 +152,35 @@ function BookingModal({ isOpen, onClose }: BookingModalProps) {
       }
 
       // Success
+      console.log('✅ Prenotazione creata con successo')
       setState('success')
     } catch (err) {
+      console.error('❌ Errore durante l\'inserimento della prenotazione:', err)
+      console.error('❌ Dettagli errore completi:', JSON.stringify(err, null, 2))
+      
       setState('error')
-      setErrorMessage('Qualcosa è andato storto. Riprova o scrivici su WhatsApp.')
+      
+      // Messaggio di errore più specifico basato sul tipo di errore
+      if (err && typeof err === 'object' && 'message' in err) {
+        const errorMessage = (err as { message?: string; code?: string }).message
+        const errorCode = (err as { code?: string }).code
+        
+        // Gestione errori specifici
+        if (errorMessage?.includes('user_id') || errorMessage?.includes('foreign key') || errorCode === '23503') {
+          // Errore foreign key constraint - la colonna user_id potrebbe non esistere o non essere configurata correttamente
+          console.warn('⚠️ Errore user_id: La colonna user_id potrebbe non esistere nella tabella bookings')
+          setErrorMessage('Errore di collegamento utente. La prenotazione potrebbe essere stata creata senza collegamento al profilo. Verifica nella dashboard.')
+        } else if (errorMessage?.includes('column') && errorMessage?.includes('does not exist')) {
+          // Colonna non esistente
+          setErrorMessage('Errore di configurazione database. Contatta il supporto tecnico.')
+        } else if (errorMessage?.includes('required') || errorCode === '23502') {
+          setErrorMessage('Campi obbligatori mancanti. Compila tutti i campi del form.')
+        } else {
+          setErrorMessage(errorMessage || 'Qualcosa è andato storto. Riprova o scrivici su WhatsApp.')
+        }
+      } else {
+        setErrorMessage('Qualcosa è andato storto. Riprova o scrivici su WhatsApp.')
+      }
     }
   }
 
@@ -176,9 +261,14 @@ function BookingModal({ isOpen, onClose }: BookingModalProps) {
                   onChange={handleChange}
                   placeholder="Email"
                   required
-                  disabled={isLoading}
+                  disabled={isLoading || !!user?.email} // Disabilita se pre-compilato da user loggato
                   className="w-full bg-transparent border-0 border-b border-zinc-600 text-brand-text placeholder-zinc-500 focus:outline-none focus:border-brand-red transition-colors py-2 font-inter disabled:opacity-50 disabled:cursor-not-allowed"
                 />
+                {user?.email && (
+                  <p className="font-inter text-xs text-zinc-500 mt-1">
+                    Email pre-compilata dal tuo account
+                  </p>
+                )}
               </div>
 
               {/* Telefono */}
@@ -223,7 +313,7 @@ function BookingModal({ isOpen, onClose }: BookingModalProps) {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || !user}
                 className="w-full bg-brand-red text-brand-text py-4 font-barlow font-bold uppercase tracking-wide hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isLoading ? (
@@ -231,10 +321,17 @@ function BookingModal({ isOpen, onClose }: BookingModalProps) {
                     <Loader2 className="w-5 h-5 animate-spin" />
                     <span>Prenotazione in corso...</span>
                   </>
+                ) : !user ? (
+                  'LOGIN RICHIESTO'
                 ) : (
                   'CONFERMA'
                 )}
               </button>
+              {!user && (
+                <p className="font-inter text-xs text-zinc-500 text-center mt-2">
+                  Effettua il login per prenotare una sessione
+                </p>
+              )}
             </form>
           </>
         ) : (
