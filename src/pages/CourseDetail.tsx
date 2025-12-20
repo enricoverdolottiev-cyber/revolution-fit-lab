@@ -172,7 +172,7 @@ function CourseDetail() {
 
   if (!course) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <main className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
           <h1 className="font-barlow text-4xl font-black text-zinc-100 uppercase mb-4">
             Corso Non Trovato
@@ -184,16 +184,18 @@ function CourseDetail() {
             Torna alla Home
           </button>
         </div>
-      </div>
+      </main>
     )
   }
 
   return (
-    <div className="min-h-screen bg-black">
+    <main className="min-h-screen bg-black">
       <SEO
-        title={`${course.title} | Revolution Fit Lab`}
-        description={course.description}
+        title={`Corso ${course.title} Roma | Revolution Fit Lab`}
+        description={`${course.description} A Roma, Via Nocera Umbra 62. Studio Pilates Urban Dark con attrezzature professionali.`}
         image={course.heroImage}
+        ogImage={course.heroImage}
+        canonical={`/corso/${course.id}`}
       />
 
       {/* Hero Section */}
@@ -201,7 +203,7 @@ function CourseDetail() {
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/80 z-10" />
         <motion.img
           src={course.heroImage}
-          alt={course.title}
+          alt={`Corso ${course.title} a Revolution Fit Lab Roma - Studio Pilates Urban Dark, Via Nocera Umbra 62`}
           className="w-full h-full object-cover"
           initial={{ scale: 1.1 }}
           animate={{ scale: 1 }}
@@ -377,7 +379,8 @@ function CourseDetail() {
                   >
                     <img
                       src={image}
-                      alt={`${course.title} - Experience ${idx + 1}`}
+                      alt={`${course.title} - Esperienza ${idx + 1} a Revolution Fit Lab Roma - Studio Pilates Urban Dark`}
+                      loading="lazy"
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -388,7 +391,7 @@ function CourseDetail() {
           </motion.section>
         </motion.div>
       </div>
-    </div>
+    </main>
   )
 }
 

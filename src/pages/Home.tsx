@@ -49,10 +49,11 @@ function Home() {
   }, [location])
 
   return (
-    <div className="min-h-screen bg-brand-bg">
+    <main className="min-h-screen bg-brand-bg">
       <SEO 
-        title="Revolution Fit Lab | Urban Pilates Studio"
-        description="Scopri il primo studio Pilates Urban Dark. Reformer, Matwork e un'atmosfera unica. Prenota la tua sessione oggi."
+        title="Revolution Fit Lab | Reformer Pilates & Personal Training Roma"
+        description="Studio Pilates Urban Dark a Roma, Via Nocera Umbra 62. Reformer Pilates, Personal Training e approccio luxury. Massimo 3 persone per classe. Prenota la tua sessione oggi."
+        canonical="/"
       />
       <Hero onOpenBooking={onOpenBooking} />
       <div className="py-12" />
@@ -62,7 +63,7 @@ function Home() {
       <Pricing onOpenBooking={onOpenBooking} />
       <ShopPreview />
       <Footer />
-    </div>
+    </main>
   )
 }
 

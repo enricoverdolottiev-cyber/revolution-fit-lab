@@ -16,7 +16,8 @@ function About() {
               {/* Immagine Reformer */}
               <img
                 src="https://images.unsplash.com/photo-1518611012118-696072aa579a?q=80&w=2070"
-                alt="Donna che esegue esercizio su macchinario Reformer"
+                alt="Donna che esegue esercizio su macchinario Reformer Pilates a Revolution Fit Lab, Via Nocera Umbra 62 Roma"
+                loading="lazy"
                 className="w-full rounded-2xl border border-zinc-800/50 shadow-[0_0_30px_rgba(220,38,38,0.15)] object-cover"
                 style={{ aspectRatio: '4/3' }}
               />

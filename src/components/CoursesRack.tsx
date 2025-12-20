@@ -88,7 +88,8 @@ function CoursesRack() {
                   {/* Image */}
                   <img 
                     src={course.image} 
-                    alt={course.title}
+                    alt={`Corso ${course.title} a Revolution Fit Lab Roma - Studio Pilates Urban Dark`}
+                    loading="lazy"
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />
                   

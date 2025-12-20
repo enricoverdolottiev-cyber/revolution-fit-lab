@@ -87,7 +87,8 @@ function Instructors() {
               <div className="relative aspect-[4/5] overflow-hidden">
                 <motion.img
                   src={instructor.image}
-                  alt={instructor.name}
+                  alt={`${instructor.name} - Istruttore ${instructor.role} a Revolution Fit Lab Roma`}
+                  loading="lazy"
                   className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700"
                   whileHover={{ scale: 1.08 }}
                   transition={{ duration: 0.5, ease: 'easeOut' }}

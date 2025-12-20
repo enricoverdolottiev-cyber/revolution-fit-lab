@@ -1,0 +1,12 @@
+# robots.txt for Revolution Fit Lab
+# Allow all search engines to crawl the site, except admin areas
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /login
+
+# Sitemap location (to be generated)
+# Sitemap: https://revolutionfitlab.com/sitemap.xml
+
