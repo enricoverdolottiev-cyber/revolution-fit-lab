@@ -270,3 +270,4 @@ Identifica eventuali problemi nel flusso e suggerisci fix.
 **Ultima modifica**: 2025-01-27
 **Stato**: In debugging - problema di caricamento dashboard rimane
 
+

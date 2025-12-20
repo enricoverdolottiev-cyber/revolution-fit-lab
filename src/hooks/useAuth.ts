@@ -26,9 +26,6 @@ export function useAuth(): AuthState {
     let profileFetchTimeout: NodeJS.Timeout | null = null
     let isFetchingProfile = false // Flag per prevenire fetch multipli simultanei
 
-    // Log stato al mount
-    console.log('🔍 Hook useAuth montato - verifica sessione in corso...')
-
     // TIMEOUT DI SICUREZZA: forza setIsLoading(false) dopo 2 secondi massimo
     // Ridotto a 2s per sbloccare più velocemente la navigazione
     safetyTimeout = setTimeout(() => {
@@ -48,7 +45,6 @@ export function useAuth(): AuthState {
       
       // PREVENZIONE LOOP: Se c'è già un fetch in corso, ignora questa chiamata
       if (isFetchingProfile) {
-        console.log('⏸️ Fetch profilo già in corso, ignoro chiamata duplicata')
         return
       }
       
@@ -86,8 +82,6 @@ export function useAuth(): AuthState {
             
             // FALLBACK: Se è email admin, imposta ruolo admin anche se query fallisce
             if (isAdminEmail && isMounted) {
-              console.log('🔄 Fallback attivato: email admin rilevata, ruolo impostato a admin')
-              console.log('Sistema Sbloccato - Ruolo attuale: admin (fallback)')
               setRole('admin')
               setProfile(null) // Profilo non disponibile ma ruolo sì
               if (profileFetchTimeout) {
@@ -98,7 +92,6 @@ export function useAuth(): AuthState {
               return
             }
             
-            console.log('Sistema Sbloccato - Ruolo attuale: null (query fallita)')
             if (isMounted) {
               setRole(null)
               setProfile(null)
@@ -115,7 +108,6 @@ export function useAuth(): AuthState {
           if (error.code === 'PGRST116') {
             // FALLBACK: Se è email admin ma profilo non esiste, imposta admin
             if (isAdminEmail && isMounted) {
-              console.log('🔄 Fallback attivato: profilo non trovato ma email admin, ruolo impostato a admin')
               setRole('admin')
               setProfile(null)
               if (profileFetchTimeout) {
@@ -143,7 +135,6 @@ export function useAuth(): AuthState {
           
           // FALLBACK: Se è email admin, imposta ruolo admin anche con altri errori
           if (isAdminEmail && isMounted) {
-            console.log('🔄 Fallback attivato: errore query ma email admin, ruolo impostato a admin')
             setRole('admin')
             setProfile(null)
             if (profileFetchTimeout) {
@@ -169,8 +160,6 @@ export function useAuth(): AuthState {
         // Successo: ruolo recuperato
         if (data && isMounted) {
           const profileRole = (data as { role: 'admin' | 'customer' }).role
-          console.log('✅ Ruolo caricato:', profileRole)
-          console.log('Sistema Sbloccato - Ruolo attuale:', profileRole)
           setRole(profileRole)
           
           // Cancella timeout profilo se completato in tempo
@@ -195,7 +184,6 @@ export function useAuth(): AuthState {
           // Nessun dato restituito
           // FALLBACK: Se è email admin, imposta ruolo admin
           if (isAdminEmail) {
-            console.log('🔄 Fallback attivato: nessun dato ma email admin, ruolo impostato a admin')
             setRole('admin')
             setProfile(null)
             if (profileFetchTimeout) {

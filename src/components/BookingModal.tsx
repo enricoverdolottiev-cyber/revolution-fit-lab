@@ -73,9 +73,6 @@ function BookingModal({ isOpen, onClose }: BookingModalProps) {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     
-    // Debug: log iniziale
-    console.log('🔍 Tentativo prenotazione per user:', user?.id)
-    
     // Guard clause: check if Supabase is configured
     if (!supabase) {
       setState('error')
@@ -88,14 +85,12 @@ function BookingModal({ isOpen, onClose }: BookingModalProps) {
 
     // Se user è null, prova a recuperare la sessione direttamente da Supabase come ultima spiaggia
     if (!currentUser?.id && supabase) {
-      console.log('⚠️ User non disponibile da useAuth, tentativo recupero sessione diretta...')
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
         if (sessionError) {
           console.error('❌ Errore nel recupero sessione:', sessionError)
         } else if (session?.user) {
-          console.log('✅ Sessione recuperata direttamente:', session.user.id)
           currentUser = { id: session.user.id, email: session.user.email ?? undefined }
         } else {
           console.warn('⚠️ Nessuna sessione attiva trovata')
@@ -136,10 +131,6 @@ function BookingModal({ isOpen, onClose }: BookingModalProps) {
         ...(currentUser.id && { user_id: currentUser.id })
       }
 
-      // Debug: log dei dati inviati
-      console.log('📤 Dati inviati a Supabase:', payload)
-      console.log('📤 User ID incluso:', !!payload.user_id)
-
       // Insert booking into Supabase
       // Type assertion: dopo il null check, supabase è garantito essere TypedSupabaseClient
       // Usiamo 'as any' perché user_id potrebbe non essere nel tipo Booking ma esistere nel DB
@@ -152,11 +143,9 @@ function BookingModal({ isOpen, onClose }: BookingModalProps) {
       }
 
       // Success
-      console.log('✅ Prenotazione creata con successo')
       setState('success')
     } catch (err) {
       console.error('❌ Errore durante l\'inserimento della prenotazione:', err)
-      console.error('❌ Dettagli errore completi:', JSON.stringify(err, null, 2))
       
       setState('error')
       
@@ -311,10 +300,13 @@ function BookingModal({ isOpen, onClose }: BookingModalProps) {
               </div>
 
               {/* Submit Button */}
-              <button
+              <motion.button
                 type="submit"
                 disabled={isLoading || !user}
-                className="w-full bg-brand-red text-brand-text py-4 font-barlow font-bold uppercase tracking-wide hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full bg-gradient-to-r from-red-600 to-red-500 text-white py-4 font-barlow font-bold uppercase tracking-wide rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-red-500/20 transition-shadow"
+                whileHover={{ scale: isLoading || !user ? 1 : 1.05 }}
+                whileTap={{ scale: isLoading || !user ? 1 : 0.95 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 17 }}
               >
                 {isLoading ? (
                   <>
@@ -326,7 +318,7 @@ function BookingModal({ isOpen, onClose }: BookingModalProps) {
                 ) : (
                   'CONFERMA'
                 )}
-              </button>
+              </motion.button>
               {!user && (
                 <p className="font-inter text-xs text-zinc-500 text-center mt-2">
                   Effettua il login per prenotare una sessione

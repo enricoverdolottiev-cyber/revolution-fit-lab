@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Menu, X, LogOut, ChevronDown } from 'lucide-react'
+import { Menu, X, LogOut, ChevronDown, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from 'framer-motion'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
+import { ToastContainer, type ToastType } from './ui/Toast'
 
 interface NavLink {
   name: string
@@ -15,10 +16,10 @@ interface NavbarProps {
 }
 
 const navLinks: NavLink[] = [
-  { name: 'Studio', href: '#about' },
-  { name: 'Team', href: '#instructors' },
-  { name: 'Classes', href: '#classes' },
-  { name: 'Pricing', href: '#pricing' },
+  { name: 'Lo Studio', href: '#about' },
+  { name: 'I Corsi', href: '#classes' },
+  { name: 'Prezzi', href: '#pricing' },
+  { name: 'Contatti', href: '#contact' },
 ]
 
 function Navbar({}: NavbarProps) {
@@ -29,6 +30,7 @@ function Navbar({}: NavbarProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
+  const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: ToastType }>>([])
   
   const { scrollY } = useScroll()
   
@@ -37,17 +39,6 @@ function Navbar({}: NavbarProps) {
     setIsScrolled(latest > 50)
   })
 
-  // Log pulito per debug: mostra stato auth
-  useEffect(() => {
-    console.log('🔍 Navbar: Stato auth aggiornato:', { 
-      isLoading, 
-      hasUser: !!user, 
-      userId: user?.id,
-      userEmail: user?.email,
-      role,
-      isAdmin 
-    })
-  }, [role, isLoading, user, isAdmin])
 
   // Funzione per scrollare a una sezione
   const scrollToSection = (sectionId: string) => {
@@ -83,49 +74,71 @@ function Navbar({}: NavbarProps) {
     navigate(`/${sectionId}`, { replace: false })
   }
 
+  // Funzione per mostrare toast
+  const showToast = (message: string, type: ToastType = 'info') => {
+    const id = Math.random().toString(36).substr(2, 9)
+    setToasts((prev) => [...prev, { id, message, type }])
+  }
+
+  const closeToast = (id: string) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id))
+  }
+
   const handleLogout = async () => {
     if (!supabase) {
       console.error('❌ Supabase non disponibile per il logout')
+      showToast('Errore: servizio non disponibile', 'error')
       return
     }
 
     // Feedback visivo: mostra stato di logout
     setIsLoggingOut(true)
-    console.log('🚪 Avvio logout...')
 
     try {
-      // Chiama signOut e aspetta il completamento
+      // 1. Esecuzione Logout Supabase con try/catch
       const { error } = await supabase.auth.signOut()
       
       if (error) {
         console.error('❌ Errore durante logout:', error)
         setIsLoggingOut(false)
+        showToast('Errore durante la disconnessione', 'error')
         return
       }
-
-      console.log('✅ Logout completato con successo')
+      
+      // 2. Pulizia Totale (Hard Reset)
+      // Svuota localStorage e sessionStorage per rimuovere ogni traccia di token JWT
+      try {
+        localStorage.clear()
+        sessionStorage.clear()
+      } catch (storageError) {
+        console.warn('⚠️ Errore durante pulizia storage:', storageError)
+        // Continua comunque con il logout
+      }
       
       // Chiudi dropdown
       setIsDropdownOpen(false)
       
-      // Naviga alla home - React Router gestirà il routing
-      // useAuth.onAuthStateChange aggiornerà automaticamente lo stato
-      navigate('/', { replace: true })
+      // 3. UX Luxury: Mostra toast di successo
+      showToast('Sessione chiusa correttamente', 'success')
+      
+      // Attendi un breve momento per mostrare il toast, poi forza ricaricamento completo
+      setTimeout(() => {
+        // Usa window.location.href invece di navigate per forzare ricaricamento completo
+        // Questo assicura che tutti gli stati di React vengano resettati da zero
+        window.location.href = '/'
+      }, 500) // Breve delay per mostrare il toast
       
     } catch (err) {
       console.error('❌ Errore critico durante logout:', err)
       setIsLoggingOut(false)
+      showToast('Errore critico durante la disconnessione', 'error')
     }
   }
 
   const getAuthButton = () => {
-    // Log per debug
-    console.log('🔍 Navbar getAuthButton:', { isLoading, hasUser: !!user, role, userId: user?.id })
-    
     // CRITICO: Mostra sempre "ACCEDI" se non c'è utente, anche durante il loading
     // Questo permette la navigazione alla pagina di login anche se il sistema sta ancora caricando
     if (!user) {
-      console.log('👤 Navbar: !user, mostro pulsante ACCEDI (anche durante loading)')
       return (
         <motion.div
           whileHover={{ scale: 1.05 }}
@@ -133,9 +146,6 @@ function Navbar({}: NavbarProps) {
         >
           <Link 
             to="/login"
-            onClick={() => {
-              console.log('🔍 Navbar: Click su Accedi. Stato auth:', { isLoading, user: !!user })
-            }}
             className="bg-brand-red hover:bg-red-600 text-white px-6 py-2.5 font-barlow font-bold uppercase tracking-wide transition-colors text-sm inline-block rounded"
           >
             ACCEDI
@@ -157,16 +167,15 @@ function Navbar({}: NavbarProps) {
       : role === 'customer' || (role === null && user)
         ? '/dashboard' 
         : '/'
-    
-    console.log('✅ Navbar: Utente loggato, mostro pulsante:', { buttonText, buttonPath, role })
 
     return (
       <div className="relative">
         <motion.button
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          className="bg-zinc-800 hover:bg-zinc-700 text-brand-text px-6 py-2.5 font-barlow font-bold uppercase tracking-wide transition-colors text-sm border border-zinc-700 flex items-center gap-2"
+          className="bg-zinc-800 hover:bg-zinc-700 text-brand-text px-6 py-2.5 font-barlow font-bold uppercase tracking-wide rounded-2xl transition-colors text-sm border border-zinc-700 flex items-center gap-2"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 17 }}
         >
           <span>{buttonText}</span>
           <ChevronDown className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
@@ -183,13 +192,6 @@ function Navbar({}: NavbarProps) {
             >
               <button
                 onClick={() => {
-                  console.log('🔍 Navigazione dashboard:', { 
-                    buttonText, 
-                    buttonPath, 
-                    role, 
-                    user: !!user,
-                    userId: user?.id 
-                  })
                   navigate(buttonPath)
                   setIsDropdownOpen(false)
                 }}
@@ -202,8 +204,12 @@ function Navbar({}: NavbarProps) {
                 disabled={isLoggingOut}
                 className="w-full text-left px-4 py-3 text-red-400 font-inter text-sm hover:bg-zinc-800 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <LogOut className={`w-4 h-4 ${isLoggingOut ? 'animate-spin' : ''}`} />
-                {isLoggingOut ? 'Disconnessione...' : 'Logout'}
+                {isLoggingOut ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <LogOut className="w-4 h-4" />
+                )}
+                {isLoggingOut ? 'Chiusura sessione...' : 'Logout'}
               </button>
             </motion.div>
           )}
@@ -294,6 +300,46 @@ function Navbar({}: NavbarProps) {
                   </motion.div>
                 )
               })}
+              {/* Link Il Team solo per Admin (Ghost Mode) */}
+              {isAdmin && !isLoading && (
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  {location.pathname === '/' ? (
+                    <motion.button
+                      onClick={() => handleNavigation('#instructors')}
+                      className="relative font-barlow text-base font-medium text-brand-text uppercase tracking-wide group"
+                    >
+                      <span className="relative z-10 transition-colors group-hover:text-brand-red">
+                        Il Team
+                      </span>
+                      <motion.span
+                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-red origin-left"
+                        initial={{ scaleX: 0 }}
+                        whileHover={{ scaleX: 1 }}
+                        transition={{ duration: 0.3, ease: 'easeOut' }}
+                      />
+                    </motion.button>
+                  ) : (
+                    <Link
+                      to="/#instructors"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="relative font-barlow text-base font-medium text-brand-text uppercase tracking-wide group block"
+                    >
+                      <span className="relative z-10 transition-colors group-hover:text-brand-red">
+                        Il Team
+                      </span>
+                      <motion.span
+                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-red origin-left"
+                        initial={{ scaleX: 0 }}
+                        whileHover={{ scaleX: 1 }}
+                        transition={{ duration: 0.3, ease: 'easeOut' }}
+                      />
+                    </Link>
+                  )}
+                </motion.div>
+              )}
               {/* Link Dashboard Admin solo per Admin */}
               {isAdmin && !isLoading && (
                 <motion.div
@@ -391,6 +437,33 @@ function Navbar({}: NavbarProps) {
                   </motion.div>
                 )
               })}
+              {/* Link Il Team solo per Admin (Mobile - Ghost Mode) */}
+              {isAdmin && !isLoading && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: navLinks.length * 0.1, duration: 0.3 }}
+                >
+                  {location.pathname === '/' ? (
+                    <motion.button
+                      onClick={() => handleNavigation('#instructors')}
+                      className="font-barlow text-4xl md:text-5xl font-bold text-brand-text uppercase tracking-wide hover:text-brand-red transition-colors"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      Il Team
+                    </motion.button>
+                  ) : (
+                    <Link
+                      to="/#instructors"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="font-barlow text-4xl md:text-5xl font-bold text-brand-text uppercase tracking-wide hover:text-brand-red transition-colors block"
+                    >
+                      Il Team
+                    </Link>
+                  )}
+                </motion.div>
+              )}
               {/* Link Dashboard Admin solo per Admin (Mobile) */}
               {isAdmin && !isLoading && (
                 <motion.div
@@ -419,6 +492,9 @@ function Navbar({}: NavbarProps) {
           onClick={() => setIsDropdownOpen(false)}
         />
       )}
+
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} onClose={closeToast} />
     </>
   )
 }

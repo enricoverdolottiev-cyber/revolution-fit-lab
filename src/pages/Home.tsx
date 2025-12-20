@@ -2,11 +2,11 @@ import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import SEO from '../components/SEO'
 import Hero from '../components/Hero'
-import Marquee from '../components/Marquee'
 import About from '../components/About'
-import Instructors from '../components/Instructors'
+// import Instructors from '../components/Instructors' // Ghost Mode: Team section hidden from public
 import ClassesGrid from '../components/ClassesGrid'
 import Pricing from '../components/Pricing'
+import ShopPreview from '../components/ShopPreview'
 import Footer from '../components/Footer'
 
 function Home() {
@@ -55,11 +55,12 @@ function Home() {
         description="Scopri il primo studio Pilates Urban Dark. Reformer, Matwork e un'atmosfera unica. Prenota la tua sessione oggi."
       />
       <Hero onOpenBooking={onOpenBooking} />
-      <Marquee />
+      <div className="py-12" />
       <About />
-      <Instructors />
+      {/* <Instructors /> Ghost Mode: Team section hidden from public */}
       <ClassesGrid />
       <Pricing onOpenBooking={onOpenBooking} />
+      <ShopPreview />
       <Footer />
     </div>
   )

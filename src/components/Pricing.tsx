@@ -14,9 +14,9 @@ interface Plan {
 const plans: Plan[] = [
   {
     id: 'drop-in',
-    title: 'DROP-IN',
-    subtitle: '1 Sessione',
-    price: '€25',
+    title: 'Ingresso Singolo',
+    subtitle: 'Drop-in',
+    price: '15€',
     features: [
       '1 lezione singola',
       'Accesso a tutte le classi',
@@ -26,13 +26,13 @@ const plans: Plan[] = [
     popular: false
   },
   {
-    id: 'pack-5',
-    title: '5-PACK',
-    subtitle: 'Pacchetto',
-    price: '€110',
+    id: 'pack-10',
+    title: 'Pacchetto 10 Ingressi',
+    subtitle: '10-pack',
+    price: '110€',
     features: [
-      '5 lezioni a scelta',
-      'Risparmio del 12%',
+      '10 lezioni a scelta',
+      'Risparmio del 27%',
       'Accesso a tutte le classi',
       'Validità 60 giorni',
       'Trasferibile ad amici'
@@ -41,9 +41,9 @@ const plans: Plan[] = [
   },
   {
     id: 'membership',
-    title: 'MEMBERSHIP',
-    subtitle: 'Mensile',
-    price: '€180',
+    title: 'Abbonamento Mensile',
+    subtitle: 'Membership',
+    price: '180€',
     features: [
       'Lezioni illimitate',
       'Accesso prioritario',
@@ -68,7 +68,7 @@ function Pricing({ onOpenBooking }: PricingProps) {
         <Reveal width="fit-content" delay={0}>
           <div className="text-center mb-16">
             <h2 className="font-barlow text-5xl md:text-6xl font-black text-brand-text uppercase tracking-tight">
-              INVEST IN YOURSELF
+              INVESTI IN TE STESSO
             </h2>
           </div>
         </Reveal>
@@ -95,7 +95,7 @@ function Pricing({ onOpenBooking }: PricingProps) {
                   transition={{ delay: index * 0.1 + 0.3, type: 'spring', stiffness: 200 }}
                 >
                   <span className="bg-brand-red text-brand-text px-4 py-1 font-barlow font-bold text-sm uppercase tracking-wide">
-                    MOST POPULAR
+                    PIÙ POPOLARE
                   </span>
                 </motion.div>
               )}
@@ -145,15 +145,16 @@ function Pricing({ onOpenBooking }: PricingProps) {
               {/* CTA Button */}
               <motion.button
                 onClick={onOpenBooking}
-                className={`w-full py-4 font-barlow font-bold uppercase tracking-wide transition-colors ${
+                className={`w-full py-4 font-barlow font-bold uppercase tracking-wide rounded-2xl transition-all ${
                   plan.popular
-                    ? 'bg-brand-red text-brand-text hover:bg-red-600'
-                    : 'bg-transparent text-brand-text border-2 border-brand-red hover:bg-brand-red hover:text-brand-text'
+                    ? 'bg-gradient-to-r from-red-600 to-red-500 text-white shadow-lg hover:shadow-red-500/20'
+                    : 'bg-transparent text-white border-2 border-red-600 hover:bg-red-600 hover:text-white shadow-lg hover:shadow-red-500/20'
                 }`}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 17 }}
               >
-                ACQUISTA
+                Inizia Ora
               </motion.button>
               </motion.div>
             </Reveal>

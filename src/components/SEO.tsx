@@ -6,7 +6,7 @@ interface SEOProps {
   image?: string
 }
 
-const defaultTitle = 'Revolution Fit Lab'
+const defaultTitle = 'Revolution Fit Lab - Reformer Pilates & Personal Training Roma'
 const defaultDescription = 'Scopri il primo studio Pilates Urban Dark. Reformer, Matwork e un\'atmosfera unica. Prenota la tua sessione oggi.'
 const defaultImage = 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070'
 const siteUrl = 'https://revolutionfitlab.com' // Update with your actual domain

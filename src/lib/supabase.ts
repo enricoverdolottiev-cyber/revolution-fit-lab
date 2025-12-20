@@ -16,7 +16,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
 } else {
   try {
     supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
-    console.log('✅ Supabase client inizializzato correttamente')
   } catch (err) {
     console.error('❌ Errore nell\'inizializzazione Supabase:', err)
     supabase = null

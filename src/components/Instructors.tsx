@@ -99,13 +99,6 @@ function Instructors() {
                   whileHover={{ opacity: 1 }}
                   transition={{ duration: 0.5 }}
                 />
-                {/* Shine effect on hover */}
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12"
-                  initial={{ x: '-100%' }}
-                  whileHover={{ x: '200%' }}
-                  transition={{ duration: 0.8, ease: 'easeInOut' }}
-                />
               </div>
 
               {/* Content */}

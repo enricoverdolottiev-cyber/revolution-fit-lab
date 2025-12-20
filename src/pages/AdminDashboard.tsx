@@ -1,24 +1,85 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { LogOut, Trash2, Users, Calendar, Loader2, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import type { Booking } from '../types/database.types'
 import { fadeInUp, staggerContainer } from '../utils/animations'
+import AdminCalendar from '../components/AdminCalendar'
+import AdminTeamDashboard from '../components/AdminTeamDashboard'
+import RevenueProjectionWidget from '../components/RevenueProjectionWidget'
+import type { ClassSession } from '../types/database.types'
+import { startOfWeek, endOfWeek, format } from 'date-fns'
+import { it } from 'date-fns/locale'
+import { ToastContainer, type ToastType } from '../components/ui/Toast'
 
 function AdminDashboard() {
-  const navigate = useNavigate()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const [weeklySessions, setWeeklySessions] = useState<ClassSession[]>([])
+  const [weeklyEnrolledCounts, setWeeklyEnrolledCounts] = useState<Record<string, number>>({})
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: ToastType }>>([])
 
-  // Fetch bookings
+  // Fetch bookings and weekly sessions
   useEffect(() => {
     fetchBookings()
+    fetchWeeklySessions()
   }, [])
+
+  const fetchWeeklySessions = async () => {
+    if (!supabase) return
+
+    try {
+      const now = new Date()
+      const weekStart = startOfWeek(now, { locale: it, weekStartsOn: 1 })
+      const weekEnd = endOfWeek(now, { locale: it, weekStartsOn: 1 })
+      // Crea timestamp ISO per il filtro su start_time
+      const startOfWeekISO = format(weekStart, "yyyy-MM-dd'T'00:00:00")
+      const endOfWeekISO = format(weekEnd, "yyyy-MM-dd'T'23:59:59")
+
+      const { data: sessionsData, error: sessionsError } = await supabase
+        .from('class_sessions' as any)
+        .select('*')
+        .gte('start_time', startOfWeekISO)
+        .lte('start_time', endOfWeekISO)
+
+      if (sessionsError) throw sessionsError
+
+      const typedSessions = (sessionsData as ClassSession[]) || []
+      setWeeklySessions(typedSessions)
+
+      // Fetch enrolled counts
+      if (typedSessions.length > 0) {
+        try {
+          const sessionIds = typedSessions.map(s => s.id)
+          const { data: bookingsData } = await supabase
+            .from('bookings')
+            .select('class_session_id')
+
+          const counts: Record<string, number> = {}
+          sessionIds.forEach(id => {
+            counts[id] = bookingsData?.filter((b: any) => 
+              b.class_session_id === id
+            ).length || 0
+          })
+          setWeeklyEnrolledCounts(counts)
+        } catch (err) {
+          console.warn('Unable to fetch enrolled counts for revenue widget')
+          const counts: Record<string, number> = {}
+          typedSessions.forEach(s => {
+            counts[s.id] = 0
+          })
+          setWeeklyEnrolledCounts(counts)
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching weekly sessions:', err)
+    }
+  }
 
   const fetchBookings = async () => {
     if (!supabase) {
@@ -50,14 +111,65 @@ function AdminDashboard() {
     }
   }
 
+  // Funzione per mostrare toast
+  const showToast = (message: string, type: ToastType = 'info') => {
+    const id = Math.random().toString(36).substr(2, 9)
+    setToasts((prev) => [...prev, { id, message, type }])
+  }
+
+  const closeToast = (id: string) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id))
+  }
+
   const handleLogout = async () => {
-    if (!supabase) return
+    if (!supabase) {
+      console.error('❌ Supabase non disponibile per il logout')
+      showToast('Errore: servizio non disponibile', 'error')
+      return
+    }
+
+    // Feedback visivo: mostra stato di logout
+    setIsLoggingOut(true)
+    console.log('🚪 Avvio logout...')
 
     try {
-      await supabase.auth.signOut()
-      navigate('/login')
+      // 1. Esecuzione Logout Supabase con try/catch
+      const { error } = await supabase.auth.signOut()
+      
+      if (error) {
+        console.error('❌ Errore durante logout:', error)
+        setIsLoggingOut(false)
+        showToast('Errore durante la disconnessione', 'error')
+        return
+      }
+
+      console.log('✅ Logout Supabase completato con successo')
+      
+      // 2. Pulizia Totale (Hard Reset)
+      // Svuota localStorage e sessionStorage per rimuovere ogni traccia di token JWT
+      try {
+        localStorage.clear()
+        sessionStorage.clear()
+        console.log('✅ Storage pulito completamente')
+      } catch (storageError) {
+        console.warn('⚠️ Errore durante pulizia storage:', storageError)
+        // Continua comunque con il logout
+      }
+      
+      // 3. UX Luxury: Mostra toast di successo
+      showToast('Sessione chiusa correttamente', 'success')
+      
+      // Attendi un breve momento per mostrare il toast, poi forza ricaricamento completo
+      setTimeout(() => {
+        // Usa window.location.href invece di navigate per forzare ricaricamento completo
+        // Questo assicura che tutti gli stati di React vengano resettati da zero
+        window.location.href = '/'
+      }, 500) // Breve delay per mostrare il toast
+      
     } catch (err) {
-      console.error('Logout error:', err)
+      console.error('❌ Errore critico durante logout:', err)
+      setIsLoggingOut(false)
+      showToast('Errore critico durante la disconnessione', 'error')
     }
   }
 
@@ -143,10 +255,15 @@ function AdminDashboard() {
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg transition-colors font-inter text-sm"
+            disabled={isLoggingOut}
+            className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-full transition-colors font-inter text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <LogOut className="w-4 h-4" />
-            <span>Logout</span>
+            {isLoggingOut ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <LogOut className="w-4 h-4" />
+            )}
+            <span>{isLoggingOut ? 'Chiusura sessione...' : 'Logout'}</span>
           </button>
         </div>
       </header>
@@ -179,6 +296,21 @@ function AdminDashboard() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Revenue Projection Widget */}
+        {weeklySessions.length > 0 && (
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={fadeInUp}
+            className="mb-8"
+          >
+            <RevenueProjectionWidget
+              sessions={weeklySessions}
+              enrolledCounts={weeklyEnrolledCounts}
+            />
+          </motion.div>
+        )}
 
         {/* Statistics Cards */}
         <motion.div
@@ -225,6 +357,36 @@ function AdminDashboard() {
               <Calendar className="w-10 h-10 text-brand-red" />
             </div>
           </motion.div>
+        </motion.div>
+
+        {/* Admin Calendar */}
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={fadeInUp}
+          className="mb-8"
+        >
+          <AdminCalendar
+            onMessage={(type, text) => {
+              setMessage({ type, text })
+              setTimeout(() => setMessage(null), 3000)
+            }}
+          />
+        </motion.div>
+
+        {/* Admin Team Dashboard */}
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={fadeInUp}
+          className="mb-8"
+        >
+          <AdminTeamDashboard
+            onMessage={(type, text) => {
+              setMessage({ type, text })
+              setTimeout(() => setMessage(null), 3000)
+            }}
+          />
         </motion.div>
 
         {/* Bookings Table */}
@@ -359,6 +521,9 @@ function AdminDashboard() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} onClose={closeToast} />
     </div>
   )
 }

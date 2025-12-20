@@ -12,6 +12,7 @@
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
     "@supabase/supabase-js": "^2.87.1",
+    "date-fns": "^4.1.0",
     "framer-motion": "^12.23.26",
     "lucide-react": "^0.561.0",
     "react": "^18.2.0",

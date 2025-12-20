@@ -59,32 +59,14 @@ function Hero({ onOpenBooking }: HeroProps) {
         
         <motion.button 
           onClick={onOpenBooking}
-          className="relative bg-brand-red text-brand-text px-12 py-4 text-lg font-barlow font-bold uppercase tracking-wide overflow-hidden group"
+          className="relative bg-gradient-to-r from-red-600 to-red-500 text-white px-12 py-4 text-lg font-barlow font-bold uppercase tracking-wide rounded-2xl group shadow-lg hover:shadow-red-500/20 transition-shadow"
           variants={fadeInUp}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 17 }}
         >
-          {/* Glow effect */}
-          <span className="absolute inset-0 bg-gradient-to-r from-red-500 via-red-600 to-red-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"></span>
-          
-          {/* Ripple effect background */}
-          <motion.span
-            className="absolute inset-0 bg-white/20 rounded-full"
-            initial={{ scale: 0, opacity: 0 }}
-            whileHover={{ scale: 2, opacity: [0, 0.5, 0] }}
-            transition={{ duration: 0.6 }}
-          />
-          
           {/* Button text */}
           <span className="relative z-10">PRENOTA LEZIONE</span>
-          
-          {/* Shine effect */}
-          <motion.span
-            className="absolute inset-0 -skew-x-12 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-            initial={{ x: '-100%' }}
-            whileHover={{ x: '200%' }}
-            transition={{ duration: 0.7, ease: 'easeInOut' }}
-          />
         </motion.button>
       </motion.div>
     </section>

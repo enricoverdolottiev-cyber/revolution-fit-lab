@@ -1,20 +1,22 @@
 # Revolution Fit Lab - Context Summary
 
 > **Source of Truth** per lo sviluppo del progetto  
-> Ultimo aggiornamento: **Gennaio 2025** | Versione: **V9.0**
+> Ultimo aggiornamento: **Gennaio 2025** | Versione: **V10.0**
 
 ---
 
 ## 📊 STATO GENERALE
 
-**Versione:** V9.0  
-**Fase Attuale:** Rifinitura UI & Integrazione Logica  
+**Versione:** V10.0  
+**Fase Attuale:** Stabilizzazione & Bug Fix  
 **Status:** 🟢 In sviluppo attivo
 
 Il progetto è nella fase finale di sviluppo, con focus su:
 - ✅ Navigazione universale implementata
 - ✅ Dashboard cliente con design Bento Grid
-- ✅ Sistema di autenticazione stabile
+- ✅ Sistema di autenticazione stabile e robusto
+- ✅ Allineamento completo schema database
+- ✅ Validazione robusta prenotazioni
 - 🚧 Ottimizzazioni SEO e accessibilità in corso
 
 ---
@@ -116,6 +118,11 @@ Il progetto è nella fase finale di sviluppo, con focus su:
 - Gestione errori robusta (timeout sicurezza 2s, graceful degradation)
 - RLS policies su Supabase per sicurezza
 
+**Fix Navigazione/Login (Gennaio 2025):**
+- **Sblocco immediato loading:** Quando `session === null`, `isLoading` viene impostato a `false` immediatamente con `return` anticipato
+- **Timeout ridotto:** Da 3s a 2s per sbloccare più velocemente la navigazione
+- **Log di debug:** Aggiunti log per tracciare stato auth e session recovery
+
 **Ruoli:**
 - `admin` - Accesso a `/admin`
 - `customer` - Accesso a `/dashboard`
@@ -124,6 +131,91 @@ Il progetto è nella fase finale di sviluppo, con focus su:
 **Protected Routes:**
 - `ProtectedRoute` component con redirect automatico
 - Verifica ruolo prima del render
+- **Fix:** Non interferisce con pagina `/login` - loader non mostrato su route di autenticazione
+
+### 5. Fix Navigazione Login (`Navbar.tsx` & `ProtectedRoute.tsx`)
+
+**Problema Risolto:** Blocco navigazione quando si clicca su "Accedi" - loader infinito.
+
+**Soluzioni Implementate:**
+
+**Navbar.tsx:**
+- Pulsante "Accedi" sempre visibile anche durante `isLoading`
+- Rimosso controllo che nascondeva il pulsante durante il loading
+- Aggiunto log di debug: `console.log("🔍 Navbar: Click su Accedi. Stato auth:", { isLoading, user: !!user })`
+- Link a `/login` funziona immediatamente senza attendere completamento auth
+
+**ProtectedRoute.tsx:**
+- Aggiunto controllo: se URL è `/login` o `/auth`, il loader non viene mostrato
+- Pagina di login sempre accessibile pubblicamente
+- Log di debug per capire quando e perché il loader rimane visibile
+
+**Risultato:**
+- Navigazione a `/login` funziona immediatamente
+- Nessun loop di attesa utente per caricare pagina di login
+- UX migliorata con feedback immediato
+
+### 6. Allineamento Schema Database (Gennaio 2025)
+
+**Problema Risolto:** Errore PGRST204 - disallineamento nomi colonne tra frontend e database.
+
+**Modifiche Implementate:**
+
+**database.types.ts:**
+- Cambiato `full_name: string` → `name: string` nell'interfaccia `Booking`
+- Aggiunto `status?: string` (default: 'pending')
+- Aggiunto `user_id?: string` per collegamento utente
+
+**BookingModal.tsx:**
+- Payload aggiornato: `full_name` → `name`
+- Rimossi riferimenti a `created_at` (gestito automaticamente dal DB)
+- Payload finale: `{ name, email, phone, class_type, user_id? }`
+
+**CustomerDashboard.tsx:**
+- Aggiornato commento da `full_name` a `name` per coerenza
+- Nessuna modifica funzionale necessaria (non usa direttamente il campo)
+
+**AdminDashboard.tsx & Dashboard.tsx:**
+- Cambiato `{booking.full_name}` → `{booking.name}` in tutte le visualizzazioni
+
+**Risultato:**
+- Schema frontend allineato con database reale Supabase
+- Errore PGRST204 risolto
+- Tutti i tipi TypeScript sincronizzati
+
+### 7. Validazione Robusta BookingModal (Gennaio 2025)
+
+**Problema Risolto:** Errore "Errore di collegamento utente" e gestione user_id opzionale.
+
+**Modifiche Implementate:**
+
+**Recupero Sessione Fallback:**
+- Se `user` da `useAuth` è null, tentativo di recupero diretto da `supabase.auth.getSession()`
+- Messaggio errore specifico: "Sessione scaduta o utente non riconosciuto. Prova a ricaricare la pagina."
+
+**Payload Opzionale user_id:**
+- `user_id` incluso solo se disponibile (opzionale ma raccomandato)
+- Codice funziona sia con che senza colonna `user_id` nel database
+- Backward compatibility mantenuta
+
+**Gestione Errori Migliorata:**
+- Rilevamento specifico errori foreign key (`23503`)
+- Messaggio informativo se `user_id` non configurato correttamente
+- Rilevamento errori colonna non esistente
+- Log di debug completi per troubleshooting
+
+**Log di Debug:**
+- `console.log('🔍 Tentativo prenotazione per user:', user?.id)` all'inizio
+- Log quando sessione viene recuperata direttamente
+- Log payload inviato con indicazione presenza `user_id`
+
+**File Documentazione:**
+- Creato `SUPABASE_USER_ID_SETUP.md` con istruzioni per configurazione colonna `user_id`
+
+**Risultato:**
+- Validazione robusta con fallback multipli
+- Gestione errori chiara e informativa
+- Compatibilità con/senza colonna `user_id`
 
 ---
 
@@ -147,6 +239,9 @@ Il progetto è nella fase finale di sviluppo, con focus su:
 - ✅ Protected routes funzionanti
 - ✅ Gestione sessioni Supabase
 - ✅ Logout con cleanup completo
+- ✅ Fix navigazione login - sblocco immediato
+- ✅ Pulsante "Accedi" sempre accessibile
+- ✅ ProtectedRoute non interferisce con /login
 
 ### Dashboard Cliente
 - ✅ Design Bento Grid implementato
@@ -159,6 +254,13 @@ Il progetto è nella fase finale di sviluppo, con focus su:
 - ✅ Statistiche dinamiche
 - ✅ CRUD operazioni (Delete)
 - ✅ UI moderna e responsive
+
+### Database & Schema
+- ✅ Allineamento completo schema (full_name → name)
+- ✅ Tipi TypeScript sincronizzati con database reale
+- ✅ Validazione robusta prenotazioni con fallback
+- ✅ Gestione user_id opzionale con backward compatibility
+- ✅ Documentazione setup database (SUPABASE_USER_ID_SETUP.md)
 
 ---
 
@@ -200,6 +302,9 @@ Il progetto è nella fase finale di sviluppo, con focus su:
 - [ ] Valutare aggiunta tabella `sessions` per tracking completo
 - [ ] Aggiungere campo `session_date` a `bookings` (attualmente usa `created_at`)
 - [ ] Considerare tabella `user_stats` per metriche aggregate
+- [ ] **OPZIONALE:** Aggiungere colonna `user_id` a `bookings` (vedi `SUPABASE_USER_ID_SETUP.md`)
+  - Attualmente funziona senza, ma raccomandato per dashboard più efficiente
+  - Codice già preparato per supportarla quando disponibile
 
 ---
 
@@ -222,6 +327,12 @@ Il progetto è nella fase finale di sviluppo, con focus su:
    - **Nota:** Soluzione temporanea per bypassare RLS recursion issues
    - **TODO:** Risolvere RLS policies per rimuovere fallback
 
+4. **Colonna user_id Opzionale**
+   - La colonna `user_id` in `bookings` è opzionale
+   - Codice funziona sia con che senza questa colonna
+   - **Raccomandato:** Aggiungere per dashboard più efficiente (vedi `SUPABASE_USER_ID_SETUP.md`)
+   - **Stato:** Backward compatibility mantenuta
+
 ### Pattern Architetturali
 
 - **Component Structure:** Un file per componente, no barrel exports
@@ -235,13 +346,44 @@ Il progetto è nella fase finale di sviluppo, con focus su:
 ```
 src/
 ├── components/        # Componenti UI riutilizzabili
-│   └── ui/           # Componenti UI base (Reveal, etc.)
+│   ├── ui/           # Componenti UI base (Reveal.tsx)
+│   ├── About.tsx
+│   ├── BookingModal.tsx      # Modal prenotazioni con validazione robusta
+│   ├── ClassesGrid.tsx
+│   ├── CoursesRack.tsx
+│   ├── Features.tsx
+│   ├── Footer.tsx
+│   ├── Hero.tsx
+│   ├── Instructors.tsx
+│   ├── Marquee.tsx
+│   ├── Navbar.tsx            # Navigazione universale + fix login
+│   ├── Pricing.tsx
+│   ├── ProtectedRoute.tsx    # Route protette con fix /login
+│   └── SEO.tsx
 ├── pages/            # Route-level components
+│   ├── AdminDashboard.tsx     # Dashboard admin con dati reali
+│   ├── Auth.tsx              # Pagina login/registrazione
+│   ├── CustomerDashboard.tsx # Dashboard cliente Bento Grid
+│   ├── Dashboard.tsx         # (Legacy - considerare rimozione)
+│   ├── Home.tsx              # Homepage con sezioni
+│   └── Login.tsx             # (Legacy - usare Auth.tsx)
 ├── hooks/            # Custom React hooks
-├── lib/              # External service clients (Supabase)
+│   └── useAuth.ts            # Hook autenticazione con fix navigazione
+├── lib/              # External service clients
+│   └── supabase.ts           # Client Supabase tipizzato
 ├── types/            # TypeScript type definitions
-├── utils/            # Utility functions (animations)
-└── App.tsx           # Root component con routing
+│   └── database.types.ts     # Tipi database (allineati con schema reale)
+├── utils/            # Utility functions
+│   └── animations.ts          # Varianti Framer Motion centralizzate
+├── App.tsx           # Root component con routing
+├── main.tsx          # Entry point con HelmetProvider
+└── index.css         # Stili globali Tailwind
+
+Root/
+├── SUPABASE_USER_ID_SETUP.md  # Istruzioni setup colonna user_id
+├── supabase_security.sql      # RLS policies
+├── supabase_admin_rls.sql     # Admin RLS policies
+└── tailwind.config.js         # Config Tailwind con brand colors
 ```
 
 ---
@@ -250,9 +392,32 @@ src/
 
 - **Database Schema:** `src/types/database.types.ts`
 - **Supabase Security:** `supabase_security.sql`
+- **Setup user_id:** `SUPABASE_USER_ID_SETUP.md` (nuovo)
 - **Animations:** `src/utils/animations.ts`
 - **Brand Colors:** `tailwind.config.js`
 - **Routing:** `src/App.tsx`
+- **Auth Hook:** `src/hooks/useAuth.ts`
+- **Booking Modal:** `src/components/BookingModal.tsx`
+
+---
+
+## 📋 CHANGELOG RECENTE (Gennaio 2025)
+
+### V10.0 - Stabilizzazione & Bug Fix
+- ✅ Fix navigazione login: sblocco immediato quando session === null
+- ✅ Fix pulsante "Accedi": sempre visibile anche durante loading
+- ✅ Fix ProtectedRoute: non interferisce con pagina /login
+- ✅ Allineamento schema database: full_name → name
+- ✅ Validazione robusta BookingModal con fallback sessione
+- ✅ Gestione user_id opzionale con backward compatibility
+- ✅ Documentazione setup database (SUPABASE_USER_ID_SETUP.md)
+- ✅ Log di debug completi per troubleshooting
+
+### V9.0 - Navigazione Universale & Dashboard
+- ✅ Smart Navigation System implementato
+- ✅ Customer Dashboard con design Bento Grid
+- ✅ Integrazione Supabase per prenotazioni
+- ✅ Admin Dashboard con dati reali
 
 ---
 
