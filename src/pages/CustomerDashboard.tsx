@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Calendar, CreditCard, ShoppingBag, User } from 'lucide-react'
 import ProfileSection from '../components/ProfileSection'
 import ClassesSection from '../components/ClassesSection'
+import AccessPass from '../components/AccessPass'
 import { ToastContainer } from '../components/ui/Toast'
 
 // Lazy loading per Shop e Pagamenti per migliorare performance
@@ -67,9 +68,12 @@ function CustomerDashboard() {
           transition={{ duration: 0.5 }}
           className="mb-8"
         >
-          <h1 className="font-barlow text-4xl md:text-5xl font-black text-zinc-100 uppercase mb-2">
-            La Tua Dashboard
-          </h1>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-2">
+            <h1 className="font-barlow text-4xl md:text-5xl font-black text-zinc-100 uppercase">
+              La Tua Dashboard
+            </h1>
+            <AccessPass compact={true} showToast={showToast} />
+          </div>
           <p className="font-inter text-zinc-400">
             Gestisci le tue classi, pagamenti e profilo
           </p>

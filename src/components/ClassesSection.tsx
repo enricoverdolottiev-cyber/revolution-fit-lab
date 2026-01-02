@@ -12,6 +12,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import type { Booking } from '../types/database.types'
 import { fadeInUp, staggerContainer } from '../utils/animations'
+import AccessPass from './AccessPass'
 
 interface ClassesSectionProps {
   showToast: (message: string, type: 'success' | 'error' | 'info') => void
@@ -215,19 +216,27 @@ function ClassesSection({ showToast }: ClassesSectionProps) {
       variants={staggerContainer}
       className="space-y-6"
     >
-      {/* Book Now CTA */}
-      <motion.div variants={fadeInUp}>
-        <motion.button
-          onClick={handleBookSession}
-          className="w-full bg-gradient-to-r from-red-600 to-red-500 text-white font-barlow font-bold uppercase tracking-wide rounded-2xl p-4 flex items-center justify-center gap-3 shadow-lg hover:shadow-red-500/20 transition-shadow"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-        >
-          <Plus className="w-5 h-5" />
-          <span>Prenota Ora</span>
-        </motion.button>
-      </motion.div>
+      {/* Bento Grid: AccessPass + Book Now CTA */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* AccessPass - Prioritaria, occupa 2 colonne su desktop */}
+        <motion.div variants={fadeInUp} className="lg:col-span-2">
+          <AccessPass showToast={showToast} />
+        </motion.div>
+        
+        {/* Book Now CTA - 1 colonna su desktop */}
+        <motion.div variants={fadeInUp} className="lg:col-span-1">
+          <motion.button
+            onClick={handleBookSession}
+            className="w-full h-full min-h-[200px] bg-gradient-to-r from-red-600 to-red-500 text-white font-barlow font-bold uppercase tracking-wide rounded-2xl p-6 flex flex-col items-center justify-center gap-3 shadow-lg hover:shadow-red-500/20 transition-shadow"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+          >
+            <Plus className="w-8 h-8" />
+            <span className="text-lg">Prenota Ora</span>
+          </motion.button>
+        </motion.div>
+      </div>
 
       {/* Upcoming Classes */}
       <motion.div

@@ -108,6 +108,25 @@ export interface ClassSession {
   updated_at?: string
 }
 
+export interface UserSubscription {
+  id: string
+  user_id: string
+  type: 'drop-in' | 'pack-10' | 'membership' | string
+  status: 'active' | 'expired' | 'cancelled'
+  expiry_date: string // ISO datetime string
+  created_at: string
+  updated_at?: string
+}
+
+export interface CheckIn {
+  id: string
+  user_id: string
+  status: 'granted' | 'denied'
+  reason?: string | null // Motivo del diniego (es. "Abbonamento scaduto", "Utente non trovato")
+  admin_id?: string | null // ID dell'admin che ha scansionato (opzionale)
+  created_at: string
+}
+
 /**
  * Tipo helper per il database Supabase.
  * Estende i tipi generici di Supabase con le nostre tabelle.
@@ -150,6 +169,16 @@ export type Database = {
         Row: ClassSession
         Insert: Omit<ClassSession, 'id' | 'created_at' | 'updated_at' | 'enrolled_count'> & { created_at?: string; updated_at?: string }
         Update: Partial<Omit<ClassSession, 'id' | 'created_at'>> & { updated_at?: string }
+      }
+      user_subscriptions: {
+        Row: UserSubscription
+        Insert: Omit<UserSubscription, 'id' | 'created_at' | 'updated_at'> & { created_at?: string; updated_at?: string }
+        Update: Partial<Omit<UserSubscription, 'id' | 'user_id' | 'created_at'>> & { updated_at?: string }
+      }
+      check_ins: {
+        Row: CheckIn
+        Insert: Omit<CheckIn, 'id' | 'created_at'> & { created_at?: string }
+        Update: Partial<Omit<CheckIn, 'id' | 'user_id' | 'created_at'>>
       }
     }
     Views: {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { LogOut, Trash2, Users, Calendar, Loader2, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react'
+import { LogOut, Trash2, Users, Calendar, Loader2, AlertCircle, CheckCircle, RefreshCw, QrCode, ArrowRight } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { Booking } from '../types/database.types'
 import { fadeInUp, staggerContainer } from '../utils/animations'
@@ -13,6 +14,7 @@ import { it } from 'date-fns/locale'
 import { ToastContainer, type ToastType } from '../components/ui/Toast'
 
 function AdminDashboard() {
+  const navigate = useNavigate()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -312,12 +314,12 @@ function AdminDashboard() {
           </motion.div>
         )}
 
-        {/* Statistics Cards */}
+        {/* Statistics Cards + Scanner Card */}
         <motion.div
           initial="hidden"
           animate="visible"
           variants={staggerContainer}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
         >
           <motion.div
             variants={fadeInUp}
@@ -355,6 +357,68 @@ function AdminDashboard() {
                 <p className="text-3xl font-barlow font-black mt-2">{statistics.thisWeek}</p>
               </div>
               <Calendar className="w-10 h-10 text-brand-red" />
+            </div>
+          </motion.div>
+
+          {/* Scanner Ingressi Card */}
+          <motion.div
+            variants={fadeInUp}
+            className="bg-gradient-to-br from-red-600/20 to-red-500/10 border-2 border-red-600/50 rounded-lg p-6 relative overflow-hidden group cursor-pointer"
+            onClick={() => navigate('/admin/scanner')}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            {/* Badge LIVE */}
+            <motion.div
+              className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 bg-red-600/30 border border-red-500/50 rounded-full"
+              animate={{
+                boxShadow: [
+                  '0 0 0px rgba(239, 68, 68, 0.4)',
+                  '0 0 15px rgba(239, 68, 68, 0.8)',
+                  '0 0 0px rgba(239, 68, 68, 0.4)',
+                ],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: 'easeInOut',
+              }}
+            >
+              <motion.div
+                className="w-2 h-2 bg-red-500 rounded-full"
+                animate={{
+                  scale: [1, 1.3, 1],
+                  opacity: [1, 0.6, 1],
+                }}
+                transition={{
+                  duration: 1.5,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+              />
+              <span className="font-barlow text-xs font-bold text-red-400 uppercase tracking-wide">
+                LIVE
+              </span>
+            </motion.div>
+
+            <div className="flex flex-col h-full">
+              <div className="flex items-center justify-between mb-4">
+                <QrCode className="w-10 h-10 text-red-400" />
+                <ArrowRight className="w-5 h-5 text-red-400/50 group-hover:text-red-400 group-hover:translate-x-1 transition-all" />
+              </div>
+              <div className="flex-1">
+                <p className="text-zinc-300 font-inter text-sm uppercase mb-2">Scanner Ingressi</p>
+                <p className="text-zinc-400 font-inter text-xs mb-4">
+                  Valida accessi con QR Code
+                </p>
+                <motion.button
+                  className="w-full px-4 py-2.5 bg-red-600/20 hover:bg-red-600/30 border border-red-600/50 rounded-lg transition-colors font-barlow font-bold uppercase text-sm text-red-400"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  Avvia Scanner
+                </motion.button>
+              </div>
             </div>
           </motion.div>
         </motion.div>

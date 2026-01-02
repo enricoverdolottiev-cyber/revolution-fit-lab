@@ -5,6 +5,7 @@ import BookingModal from './components/BookingModal'
 import Home from './pages/Home'
 import Auth from './pages/Auth'
 import AdminDashboard from './pages/AdminDashboard'
+import AdminScanner from './pages/AdminScanner'
 import CustomerDashboard from './pages/CustomerDashboard'
 import CourseDetail from './pages/CourseDetail'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -36,6 +37,14 @@ function App() {
           element={
             <ProtectedRoute requiredRole="admin">
               <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/scanner"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminScanner />
             </ProtectedRoute>
           }
         />
